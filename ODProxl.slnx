@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="ODProxl.Utils/ODProxl.Utils.csproj" Id="93dc0af8-dfab-4b7e-8f46-b71bb0478855" />
+  <Project Path="ODProxl/ODProxl.csproj" />
+  <Project Path="ViewModels/ODProxl.ViewModels.csproj" Id="50985c19-8f5f-4493-94ef-35372c95355c" />
+</Solution>
