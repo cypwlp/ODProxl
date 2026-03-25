@@ -7,6 +7,7 @@ using ODProxl.Dialogs;
 using ODProxl.Services;
 using ODProxl.Services.impls;
 using ODProxl.ViewModels;
+using ODProxl.ViewModels.Pages;
 using ODProxl.ViewModels.Dialogs;
 using Prism.Dialogs;
 using Prism.DryIoc;
@@ -19,11 +20,11 @@ using Velopack;
 using Velopack.Sources;
 
 
+
 namespace ODProxl
 {
     public partial class App : PrismApplication
     {
-        private IGeoLocationService _geoLocationService;
         protected override AvaloniaObject CreateShell() => null!;
 
 
@@ -31,9 +32,11 @@ namespace ODProxl
         {
             containerRegistry.RegisterDialog<LoginDialog, LoginDialogViewModel>();
             containerRegistry.RegisterForNavigation<MainWin, MainWinViewModel>();
-            containerRegistry.Register<IDataService, DataService>();
+            containerRegistry.RegisterForNavigation<HomePage, HomePageViewModel>();
+            containerRegistry.Register<IDataService>(() => new DataService("http://www.topmix.net/dataservice//GetData.asmx")); 
             containerRegistry.Register<IGeoLocationService, GeoLocationService>();
-            //containerRegistry.Register<IDataService, DataService>();
+            containerRegistry.Register<IDialogService, DialogService>();
+
 
         }
 
@@ -44,7 +47,8 @@ namespace ODProxl
             {
                 try
                 {
-                    countryCode = await _geoLocationService.GetCountryCodeAsync(cts.Token);
+                    var geoLocationService = Container.Resolve<IGeoLocationService>();
+                    countryCode = await geoLocationService.GetCountryCodeAsync(cts.Token);
                 }
                 catch (OperationCanceledException)
                 {
@@ -54,7 +58,7 @@ namespace ODProxl
 
             try
             {
-                //bool useChinaMirror = countryCode == "CN";
+                bool useChinaMirror = countryCode == "CN";
                 //IUpdateSource source;
                 //if (useChinaMirror)
                 //{

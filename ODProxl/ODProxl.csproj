@@ -27,10 +27,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Pages\" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\ODProxl.EntityModels\ODProxl.EntityModels.csproj" />
     <ProjectReference Include="..\ODProxl.Utils\ODProxl.Utils.csproj" />
     <ProjectReference Include="..\Services\ODProxl.Services.csproj" />
@@ -38,8 +34,15 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Update="MainWin.axaml.cs">
-      <DependentUpon>MainWin.axaml</DependentUpon>
-    </Compile>
+		  <AvaloniaResource Include="Assets\**" />
+    <None Update="Assets\app-icon.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Assets\avalonia-logo.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Assets\avatar.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 </Project>

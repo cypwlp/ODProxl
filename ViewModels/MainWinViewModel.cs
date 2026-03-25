@@ -8,9 +8,10 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Material.Icons;
+
 namespace ODProxl.ViewModels
 {
-    public class MainWinViewModel:BindableBase
+    public class MainWinViewModel : BindableBase
     {
         #region 字段
         private readonly IRegionManager? _regionManager;
@@ -20,6 +21,7 @@ namespace ODProxl.ViewModels
 
         #region 属性
         public ObservableCollection<LeftMenuItem>? MenuItems { get; set; }
+
         public LoginInfo? LoginInfo
         {
             get => _loginInfo;
@@ -27,13 +29,13 @@ namespace ODProxl.ViewModels
         }
         #endregion
 
-        #region 菜單於導航邏輯
+        #region 菜單與導航邏輯
 
         private async Task LoadMenuAsync()
         {
             MenuItems =
             [
-                new() { Icon = MaterialIconKind.Home, Title = "首页", ViewName = "Home" },
+                new() { Icon = MaterialIconKind.Home, Title = "首页", ViewName = "HomePage" },
                 new()
                 {
                     Icon = MaterialIconKind.Database,
@@ -44,10 +46,8 @@ namespace ODProxl.ViewModels
                         new() { Icon = MaterialIconKind.History, Title = "歷史數據", ViewName = "History" },
                         new() { Icon = MaterialIconKind.SmokeDetector, Title = "自動檢測", ViewName = "AutoDet" },
                         new() { Icon = MaterialIconKind.GlobeModel, Title = "模型管理", ViewName = "OnnxModelMS" }
-
                     ]
                 },
-
                 new LeftMenuItem
                 {
                     Icon = MaterialIconKind.ChatProcessing,
@@ -70,15 +70,19 @@ namespace ODProxl.ViewModels
             ];
         }
 
-        public async Task NavigateAsync(LeftMenuItem menuItem, NavigationParameters? paras = null)
+        /// <summary>
+        /// 【唯一保留的 NavigateAsync】只接受 string
+        /// </summary>
+        public async Task NavigateAsync(string viewName, NavigationParameters? paras = null)
         {
-            if (menuItem == null || string.IsNullOrEmpty(menuItem.ViewName)) return;
+            if (string.IsNullOrEmpty(viewName)) return;
 
             var parameters = new NavigationParameters
             {
                 { "LoginInfo", LoginInfo }
             };
 
+            // 合併外部傳入的參數
             if (paras != null)
             {
                 foreach (var param in paras)
@@ -88,58 +92,24 @@ namespace ODProxl.ViewModels
                 }
             }
 
-
-            _regionManager.Regions["MainRegion"].RequestNavigate(
-                menuItem.ViewName,
+            _regionManager?.Regions["MainRegion"].RequestNavigate(
+                viewName,
                 callback =>
                 {
-                    if (callback.Success == true)
+                    if (callback.Success)
                     {
                         _journal = callback.Context.NavigationService.Journal;
                     }
                     else
                     {
                         System.Diagnostics.Debug.WriteLine(
-                            $"導航至 {menuItem.ViewName} 失敗: {callback.Exception?.Message}");
+                            $"導航至 {viewName} 失敗: {callback.Exception?.Message}");
                     }
                 },
                 parameters
             );
         }
-        public async Task NavigateAsync(string menuItem, NavigationParameters? paras = null)
-        {
-            if (menuItem == null || string.IsNullOrEmpty(menuItem)) return;
 
-            var parameters = new NavigationParameters
-            {
-                { "LoginInfo", LoginInfo }
-            };
-
-            if (paras != null)
-            {
-                foreach (var param in paras)
-                {
-                    if (!parameters.ContainsKey(param.Key))
-                        parameters.Add(param.Key, param.Value);
-                }
-            }
-            _regionManager.Regions["MainRegion"].RequestNavigate(
-                menuItem,
-                callback =>
-                {
-                    if (callback.Success == true)
-                    {
-                        _journal = callback.Context.NavigationService.Journal;
-                    }
-                    else
-                    {
-                        System.Diagnostics.Debug.WriteLine(
-                            $"導航至 {menuItem} 失敗: {callback.Exception?.Message}");
-                    }
-                },
-                parameters
-            );
-        }
         private async Task BackAsync()
         {
             if (_journal?.CanGoBack == true)
@@ -156,18 +126,18 @@ namespace ODProxl.ViewModels
             }
         }
 
-
+        /// <summary>
+        /// 預設導航到首頁（已改呼叫 string 版本）
+        /// </summary>
         public async Task DefaultNavigateAsync()
         {
-            var homeItem = MenuItems.FirstOrDefault(x => x.ViewName == "Home");
+            var homeItem = MenuItems?.FirstOrDefault(x => x.ViewName == "HomePage");
             if (homeItem != null)
             {
-                await NavigateAsync(homeItem, null);
+                await NavigateAsync(homeItem.ViewName); 
             }
         }
+
         #endregion
-
-
-
     }
-}  
+}

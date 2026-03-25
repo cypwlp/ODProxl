@@ -25,10 +25,10 @@ namespace ODProxl.ViewModels.Dialogs
         private string? _password;
         private string _database = "TopmixData";
         public DelegateCommand LoginCommand => new (async () => await LoginAsync());
-        public LoginDialogViewModel(IDialogService? dialogService = null, IDataService? dataService = null)
+        public LoginDialogViewModel(IDataService dataService, IDialogService dialogService)
         {
-            _dialogService = dialogService;
             _dataService = dataService;
+            _dialogService = dialogService;
         }
 
         #endregion
