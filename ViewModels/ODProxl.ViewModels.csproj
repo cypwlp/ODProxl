@@ -10,6 +10,7 @@
     <Folder Include="Pages\" />
 	  <PackageReference Include="Prism.Avalonia" />
 	  <PackageReference Include="Prism.DryIoc.Avalonia" />
+	  <PackageReference Include="Material.Icons.Avalonia" />
   </ItemGroup>
 
   <ItemGroup>

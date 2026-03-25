@@ -1,13 +1,17 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<TargetFramework>net8.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+	</PropertyGroup>
 
-  <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-  </PropertyGroup>
+	<ItemGroup>
+		<!-- Material Icons 用在 LeftMenuItem -->
+		<PackageReference Include="Material.Icons.Avalonia" />
 
-  <ItemGroup>
-    <PackageReference Include="Microsoft.Data.SqlClient"/>
-  </ItemGroup>
+		<!-- Prism 用在 BindableBase -->
+		<PackageReference Include="Prism.Avalonia" />
 
+		<PackageReference Include="Microsoft.Data.SqlClient"/>
+	</ItemGroup>
 </Project>

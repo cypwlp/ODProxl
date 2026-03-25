@@ -23,6 +23,7 @@
     <PackageReference Include="Prism.Avalonia" />           <!-- 新增這行 -->
     <PackageReference Include="Prism.DryIoc.Avalonia" />
     <PackageReference Include="Velopack" />
+	<PackageReference Include="DialogHost.Avalonia" />
   </ItemGroup>
 
   <ItemGroup>
