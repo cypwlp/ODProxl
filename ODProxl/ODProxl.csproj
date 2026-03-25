@@ -19,6 +19,7 @@
     </PackageReference>
     
     <PackageReference Include="Material.Avalonia" />
+    <PackageReference Include="Material.Icons.Avalonia"/>
     <PackageReference Include="Prism.Avalonia" />           <!-- 新增這行 -->
     <PackageReference Include="Prism.DryIoc.Avalonia" />
     <PackageReference Include="Velopack" />
@@ -33,5 +34,11 @@
     <ProjectReference Include="..\ODProxl.Utils\ODProxl.Utils.csproj" />
     <ProjectReference Include="..\Services\ODProxl.Services.csproj" />
     <ProjectReference Include="..\ViewModels\ODProxl.ViewModels.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="MainWin.axaml.cs">
+      <DependentUpon>MainWin.axaml</DependentUpon>
+    </Compile>
   </ItemGroup>
 </Project>

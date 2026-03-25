@@ -29,7 +29,7 @@ namespace ODProxl.Services.impls
         private int _timeOut = 30;
         #endregion
 
-        #region 屬性 (完全與 RemoteDBTools 一致)
+        #region 屬性
         public string Server { get; private set; } = string.Empty;
 
         public string Database => _database;

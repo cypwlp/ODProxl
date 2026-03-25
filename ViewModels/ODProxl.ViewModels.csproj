@@ -12,4 +12,8 @@
 	  <PackageReference Include="Prism.DryIoc.Avalonia" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Services\ODProxl.Services.csproj" />
+  </ItemGroup>
+
 </Project>

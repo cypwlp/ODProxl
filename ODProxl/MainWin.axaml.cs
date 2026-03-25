@@ -2,9 +2,9 @@ using Avalonia.Controls;
 
 namespace ODProxl
 {
-    public partial class MainWindow : Window
+    public partial class MainWin: Window
     {
-        public MainWindow()
+        public MainWin()
         {
             InitializeComponent();
         }

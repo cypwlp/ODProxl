@@ -1,8 +1,221 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:dialogs="using:ODProxl.ViewModels.Dialogs"
+             xmlns:prism="http://prismlibrary.com/"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-             x:Class="ODProxl.LoginDialog">
-  Welcome to Avalonia!
+             xmlns:avalonia="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="520"
+             xmlns:md="clr-namespace:Material.Styles.Controls;assembly=Material.Styles"
+             x:DataType="dialogs:LoginDialogViewModel"
+             prism:Dialog.WindowStartupLocation="CenterScreen"
+             x:Class="ODProxl.Dialogs.LoginDialog">
+    
+    <Grid Background="#F8FAFC">
+        <!-- 背景裝飾圓形 -->
+        <Canvas IsHitTestVisible="False">
+            <Ellipse Width="200" Height="200" Fill="#4F46E5" Opacity="0.05"
+                     Canvas.Left="-50" Canvas.Top="-50"/>
+            <Ellipse Width="300" Height="300" Fill="#10B981" Opacity="0.05"
+                     Canvas.Left="600" Canvas.Top="300"/>
+        </Canvas>
+
+        <!-- 登錄卡片 -->
+        <Border Width="400" Height="520"
+                Background="White"
+                CornerRadius="16"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                ClipToBounds="True"> 
+            
+            <Grid>
+                <!-- 1. 窗口控制按鈕層 (置於最頂層，不設 Margin 以便貼邊) -->
+                <StackPanel HorizontalAlignment="Right" 
+                            VerticalAlignment="Top" 
+                            Orientation="Horizontal">
+                    <Button x:Name="btnMin" 
+                            Theme="{StaticResource MaterialFlatButton}" 
+                            Width="46" Height="40"
+                            Foreground="#64748B"
+                            Click="BtnMin_Click">
+                        <avalonia:MaterialIcon Kind="Minus" Width="18" Height="18" />
+                    </Button>
+                    <Button x:Name="btnMax" 
+                            Theme="{StaticResource MaterialFlatButton}" 
+                            Width="46" Height="40"
+                            Foreground="#64748B"
+                            Click="BtnMax_Click">
+                        <avalonia:MaterialIcon x:Name="MaxIcon" Kind="WindowMaximize" Width="16" Height="16" />
+                    </Button>
+                    <Button x:Name="btnClose" 
+                            Theme="{StaticResource MaterialFlatButton}" 
+                            Width="46" Height="40"
+                            Foreground="#64748B"
+                            Click="BtnClose_Click">
+                        <Button.Styles>
+                            <Style Selector="Button:pointerover">
+                                <Setter Property="Background" Value="#E81123"/>
+                                <Setter Property="Foreground" Value="White"/>
+                            </Style>
+                        </Button.Styles>
+                        <avalonia:MaterialIcon Kind="Close" Width="18" Height="18" />
+                    </Button>
+                </StackPanel>
+
+                <!-- 2. 表單內容層 (設置 Margin，並避開頂部按鈕區域) -->
+                <Grid Margin="40,50,40,40">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" /> <!-- 標題區 -->
+                        <RowDefinition Height="Auto" /> <!-- 用戶名 -->
+                        <RowDefinition Height="Auto" /> <!-- 密碼 -->
+                        <RowDefinition Height="Auto" /> <!-- 記住我 -->
+                        <RowDefinition Height="Auto" /> <!-- 登錄/設置按鈕 -->
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- 應用圖標和標題 -->
+                    <StackPanel Grid.Row="0" Grid.ColumnSpan="2" 
+                                HorizontalAlignment="Center" Margin="0,0,0,30">
+                        <Border Width="64" Height="64"
+                                Background="#4F46E5"
+                                CornerRadius="32"
+                                Margin="0,0,0,10"/>
+                        <TextBlock Text="拓脈匙目標檢測系統"
+                                   FontSize="26"
+                                   FontWeight="Bold"
+                                   Foreground="#1E293B"
+                                   HorizontalAlignment="Center"/>
+                        <TextBlock Text="請輸入您的憑證登錄系統"
+                                   FontSize="14"
+                                   Foreground="#64748B"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,5,0,0"/>
+                    </StackPanel>
+
+                    <!-- 用戶名輸入框 -->
+                    <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Margin="0,0,0,20">
+                        <TextBlock Text="用戶名"
+                                   FontSize="13"
+                                   FontWeight="Medium"
+                                   Foreground="#475569"
+                                   Margin="0,0,0,5"/>
+                        <Border Background="#F1F5F9" CornerRadius="8" Padding="2">
+                            <TextBox Text="{Binding UserName, Mode=TwoWay}"
+                                     FontSize="14"
+                                     Background="Transparent"
+                                     BorderThickness="0"
+                                     Foreground="Black"
+                                     Padding="12">
+                                <TextBox.Styles>
+                                    <Style Selector="TextBox:focus">
+                                        <Setter Property="Background" Value="#FFFFFF"/>
+                                        <Setter Property="BorderBrush" Value="#4F46E5"/>
+                                        <Setter Property="BorderThickness" Value="2"/>
+                                    </Style>
+                                </TextBox.Styles>
+                            </TextBox>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- 密碼輸入框 -->
+                    <StackPanel Grid.Row="2" Grid.ColumnSpan="2" Margin="0,0,0,10">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="密碼"
+                                       FontSize="13"
+                                       FontWeight="Medium"
+                                       Foreground="#475569"
+                                       Margin="0,0,0,5"/>
+                            <TextBlock Grid.Column="1"
+                                       Text="忘記密碼？"
+                                       FontSize="12"
+                                       Foreground="#4F46E5"
+                                       VerticalAlignment="Center"
+                                       Cursor="Hand">
+                                <TextBlock.Styles>
+                                    <Style Selector="TextBlock:pointerover">
+                                        <Setter Property="Foreground" Value="#4338CA"/>
+                                        <Setter Property="TextDecorations" Value="Underline"/>
+                                    </Style>
+                                </TextBlock.Styles>
+                            </TextBlock>
+                        </Grid>
+                        <Border Background="#F1F5F9" CornerRadius="8" Padding="2">
+                            <TextBox Text="{Binding Password, Mode=TwoWay}"
+                                     FontSize="14"
+                                     Background="Transparent"
+                                     BorderThickness="0"
+                                     PasswordChar="*"
+                                     Foreground="Black"
+                                     Padding="12">
+                                <TextBox.Styles>
+                                    <Style Selector="TextBox:focus">
+                                        <Setter Property="Background" Value="#FFFFFF"/>
+                                        <Setter Property="BorderBrush" Value="#4F46E5"/>
+                                        <Setter Property="BorderThickness" Value="2"/>
+                                    </Style>
+                                </TextBox.Styles>
+                            </TextBox>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- 記住我選項 -->
+                    <CheckBox Grid.Row="3" Grid.ColumnSpan="2"
+                              Content="記住我"
+                              FontSize="13"
+                              Foreground="#64748B"
+                              Margin="0,0,0,30"/>
+
+                    <!-- 登錄按鈕 -->
+                    <Button Grid.Row="4"
+                            Grid.Column="0"
+                            Command="{Binding LoginCommand}"
+                            Content="登錄"
+                            FontSize="15"
+                            FontWeight="SemiBold"
+                            Foreground="White"
+                            Background="#4F46E5"
+                            BorderThickness="0"
+                            CornerRadius="8"
+                            HotKey="Enter"
+                            Height="44"
+                            Cursor="Hand">
+                        <Button.Styles>
+                            <Style Selector="Button:pointerover">
+                                <Setter Property="Background" Value="#4338CA"/>
+                            </Style>
+                        </Button.Styles>
+                    </Button>
+
+                    <!-- 設置按鈕 -->
+                    <Button Grid.Row="4"
+                            Grid.Column="1"
+                            Margin="15,0,0,0"
+                            Command="{Binding ShowSetCommand}"
+                            Content="設置"
+                            FontSize="15"
+                            FontWeight="SemiBold"
+                            Foreground="White"
+                            Background="#4F46E5"
+                            BorderThickness="0"
+                            CornerRadius="8"
+                            Height="44"
+                            Cursor="Hand">
+                        <Button.Styles>
+                            <Style Selector="Button:pointerover">
+                                <Setter Property="Background" Value="#4338CA"/>
+                            </Style>
+                        </Button.Styles>
+                    </Button>
+                </Grid>
+            </Grid>
+        </Border>
+    </Grid>
 </UserControl>
