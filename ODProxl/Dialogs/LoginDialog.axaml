@@ -1,4 +1,4 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+ï»¿<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:dialogs="using:ODProxl.ViewModels.Dialogs"
@@ -12,7 +12,7 @@
              x:Class="ODProxl.Dialogs.LoginDialog">
     
     <Grid Background="#F8FAFC">
-        <!-- ±³¾°Ñbï—ˆAÐÎ -->
+        <!-- èƒŒæ™¯è£é£¾åœ“å½¢ -->
         <Canvas IsHitTestVisible="False">
             <Ellipse Width="200" Height="200" Fill="#4F46E5" Opacity="0.05"
                      Canvas.Left="-50" Canvas.Top="-50"/>
@@ -20,7 +20,7 @@
                      Canvas.Left="600" Canvas.Top="300"/>
         </Canvas>
 
-        <!-- µÇä›¿¨Æ¬ -->
+        <!-- ç™»éŒ„å¡ç‰‡ -->
         <Border Width="400" Height="520"
                 Background="White"
                 CornerRadius="16"
@@ -29,7 +29,7 @@
                 ClipToBounds="True"> 
             
             <Grid>
-                <!-- 1. ´°¿Ú¿ØÖÆ°´âoŒÓ (ÖÃì¶×îí”ŒÓ£¬²»ÔO Margin ÒÔ±ãÙNß…) -->
+                <!-- 1. çª—å£æŽ§åˆ¶æŒ‰éˆ•å±¤ (ç½®æ–¼æœ€é ‚å±¤ï¼Œä¸è¨­ Margin ä»¥ä¾¿è²¼é‚Š) -->
                 <StackPanel HorizontalAlignment="Right" 
                             VerticalAlignment="Top" 
                             Orientation="Horizontal">
@@ -62,14 +62,14 @@
                     </Button>
                 </StackPanel>
 
-                <!-- 2. ±í†ÎƒÈÈÝŒÓ (ÔOÖÃ Margin£¬K±Üé_í”²¿°´âo…^Óò) -->
+                <!-- 2. è¡¨å–®å…§å®¹å±¤ (è¨­ç½® Marginï¼Œä¸¦é¿é–‹é ‚éƒ¨æŒ‰éˆ•å€åŸŸ) -->
                 <Grid Margin="40,50,40,40">
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" /> <!-- ˜Ëî}…^ -->
-                        <RowDefinition Height="Auto" /> <!-- ÓÃ‘ôÃû -->
-                        <RowDefinition Height="Auto" /> <!-- ÃÜ´a -->
-                        <RowDefinition Height="Auto" /> <!-- Ó›×¡ÎÒ -->
-                        <RowDefinition Height="Auto" /> <!-- µÇä›/ÔOÖÃ°´âo -->
+                        <RowDefinition Height="Auto" /> <!-- æ¨™é¡Œå€ -->
+                        <RowDefinition Height="Auto" /> <!-- ç”¨æˆ¶å -->
+                        <RowDefinition Height="Auto" /> <!-- å¯†ç¢¼ -->
+                        <RowDefinition Height="Auto" /> <!-- è¨˜ä½æˆ‘ -->
+                        <RowDefinition Height="Auto" /> <!-- ç™»éŒ„/è¨­ç½®æŒ‰éˆ• -->
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
                     <Grid.ColumnDefinitions>
@@ -77,28 +77,28 @@
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
 
-                    <!-- ‘ªÓÃˆD˜ËºÍ˜Ëî} -->
+                    <!-- æ‡‰ç”¨åœ–æ¨™å’Œæ¨™é¡Œ -->
                     <StackPanel Grid.Row="0" Grid.ColumnSpan="2" 
                                 HorizontalAlignment="Center" Margin="0,0,0,30">
                         <Border Width="64" Height="64"
                                 Background="#4F46E5"
                                 CornerRadius="32"
                                 Margin="0,0,0,10"/>
-                        <TextBlock Text="ÍØÃ}³×Ä¿˜Ë™zœyÏµ½y"
+                        <TextBlock Text="æ‹“è„ˆåŒ™ç›®æ¨™æª¢æ¸¬ç³»çµ±"
                                    FontSize="26"
                                    FontWeight="Bold"
                                    Foreground="#1E293B"
                                    HorizontalAlignment="Center"/>
-                        <TextBlock Text="ÕˆÝ”ÈëÄúµÄ‘{×CµÇä›Ïµ½y"
+                        <TextBlock Text="è«‹è¼¸å…¥æ‚¨çš„æ†‘è­‰ç™»éŒ„ç³»çµ±"
                                    FontSize="14"
                                    Foreground="#64748B"
                                    HorizontalAlignment="Center"
                                    Margin="0,5,0,0"/>
                     </StackPanel>
 
-                    <!-- ÓÃ‘ôÃûÝ”Èë¿ò -->
+                    <!-- ç”¨æˆ¶åè¼¸å…¥æ¡† -->
                     <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Margin="0,0,0,20">
-                        <TextBlock Text="ÓÃ‘ôÃû"
+                        <TextBlock Text="ç”¨æˆ¶å"
                                    FontSize="13"
                                    FontWeight="Medium"
                                    Foreground="#475569"
@@ -121,20 +121,20 @@
                         </Border>
                     </StackPanel>
 
-                    <!-- ÃÜ´aÝ”Èë¿ò -->
+                    <!-- å¯†ç¢¼è¼¸å…¥æ¡† -->
                     <StackPanel Grid.Row="2" Grid.ColumnSpan="2" Margin="0,0,0,10">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="ÃÜ´a"
+                            <TextBlock Text="å¯†ç¢¼"
                                        FontSize="13"
                                        FontWeight="Medium"
                                        Foreground="#475569"
                                        Margin="0,0,0,5"/>
                             <TextBlock Grid.Column="1"
-                                       Text="ÍüÓ›ÃÜ´a£¿"
+                                       Text="å¿˜è¨˜å¯†ç¢¼ï¼Ÿ"
                                        FontSize="12"
                                        Foreground="#4F46E5"
                                        VerticalAlignment="Center"
@@ -166,18 +166,18 @@
                         </Border>
                     </StackPanel>
 
-                    <!-- Ó›×¡ÎÒßxí— -->
+                    <!-- è¨˜ä½æˆ‘é¸é … -->
                     <CheckBox Grid.Row="3" Grid.ColumnSpan="2"
-                              Content="Ó›×¡ÎÒ"
+                              Content="è¨˜ä½æˆ‘"
                               FontSize="13"
                               Foreground="#64748B"
                               Margin="0,0,0,30"/>
 
-                    <!-- µÇä›°´âo -->
+                    <!-- ç™»éŒ„æŒ‰éˆ• -->
                     <Button Grid.Row="4"
                             Grid.Column="0"
                             Command="{Binding LoginCommand}"
-                            Content="µÇä›"
+                            Content="ç™»éŒ„"
                             FontSize="15"
                             FontWeight="SemiBold"
                             Foreground="White"
@@ -194,12 +194,12 @@
                         </Button.Styles>
                     </Button>
 
-                    <!-- ÔOÖÃ°´âo -->
+                    <!-- è¨­ç½®æŒ‰éˆ• -->
                     <Button Grid.Row="4"
                             Grid.Column="1"
                             Margin="15,0,0,0"
                             Command="{Binding ShowSetCommand}"
-                            Content="ÔOÖÃ"
+                            Content="è¨­ç½®"
                             FontSize="15"
                             FontWeight="SemiBold"
                             Foreground="White"

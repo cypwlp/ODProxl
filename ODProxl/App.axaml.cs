@@ -5,6 +5,7 @@ using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
 using ODProxl.Dialogs;
 using ODProxl.Services;
+using ODProxl.Services.impls;
 using ODProxl.ViewModels;
 using ODProxl.ViewModels.Dialogs;
 using Prism.Dialogs;
@@ -17,6 +18,7 @@ using System.Threading.Tasks;
 using Velopack;
 using Velopack.Sources;
 
+
 namespace ODProxl
 {
     public partial class App : PrismApplication
@@ -28,7 +30,10 @@ namespace ODProxl
         protected override void RegisterTypes(IContainerRegistry containerRegistry)
         {
             containerRegistry.RegisterDialog<LoginDialog, LoginDialogViewModel>();
+            containerRegistry.RegisterDialogWindow<CustomDialogWindow>();
             containerRegistry.RegisterForNavigation<MainWin, MainWinViewModel>();
+            containerRegistry.Register<IDataService, DataService>();
+
         }
 
         private async Task CheckForUpdatesAsync()
@@ -101,7 +106,7 @@ namespace ODProxl
 
             var dialogService = Container.Resolve<IDialogService>();
 
-            dialogService.ShowDialog("LoginPage", null, async result =>
+            dialogService.ShowDialog("LoginDialog", null, async result =>
             {
                 if (result?.Result == ButtonResult.OK)
                 {
@@ -144,7 +149,7 @@ namespace ODProxl
         {
             if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktopLifetime)
             {
-
+                _ = StartWithLoginAsync(desktopLifetime);
             }
             base.OnFrameworkInitializationCompleted();
         }

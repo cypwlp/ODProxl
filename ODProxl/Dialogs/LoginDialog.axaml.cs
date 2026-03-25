@@ -16,10 +16,12 @@ public partial class LoginDialog : UserControl
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
+
         if (VisualRoot is Window window)
         {
-            window.WindowStartupLocation = WindowStartupLocation.CenterScreen;
             window.SystemDecorations = SystemDecorations.None;
+            window.WindowStartupLocation = WindowStartupLocation.CenterScreen;
+            window.CanResize = false;
         }
     }
 

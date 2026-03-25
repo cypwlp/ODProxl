@@ -19,7 +19,7 @@
     </PackageReference>
     
     <PackageReference Include="Material.Avalonia" />
-    <PackageReference Include="Material.Icons.Avalonia"/>
+    <PackageReference Include="Material.Icons.Avalonia" />
     <PackageReference Include="Prism.Avalonia" />           <!-- 新增這行 -->
     <PackageReference Include="Prism.DryIoc.Avalonia" />
     <PackageReference Include="Velopack" />

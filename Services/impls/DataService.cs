@@ -15,7 +15,7 @@ using System.Xml.Linq;
 
 namespace ODProxl.Services.impls
 {
-    internal class DataService : IDataService
+    public class DataService : IDataService
     {
         #region 字段
         private Service1SoapClient? _soapClient;
