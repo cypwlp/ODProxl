@@ -13,6 +13,7 @@ using Prism.Dialogs;
 using Prism.DryIoc;
 using Prism.Ioc;
 using Prism.Navigation.Regions;
+using RemoteService;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
@@ -74,6 +75,7 @@ namespace ODProxl
                         var vm = Container.Resolve<MainWinViewModel>();
                         //vm.LogUser = logUser;
                         //vm.RemoteDBTools = dbtools;
+                        vm.LoginInfo= result.Parameters.GetValue<LoginInfo>("LoginInfo");
                         mainWin.DataContext = vm;
 
                         var regionManager = Container.Resolve<IRegionManager>();

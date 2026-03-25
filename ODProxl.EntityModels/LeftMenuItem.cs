@@ -9,6 +9,8 @@ namespace ODProxl.EntityModels
         private MaterialIconKind _icon;
         private string? _title;
         private string? _viewName;
+        private ObservableCollection<string>? limitUserName;
+        private string? commandName;
 
         public ObservableCollection<LeftMenuItem> SubItems { get; set; } = new();
 
@@ -34,6 +36,17 @@ namespace ODProxl.EntityModels
         {
             get => _viewName;
             set => SetProperty(ref _viewName, value);
+        }
+        public ObservableCollection<string>? LimitUserName
+        {
+            get => limitUserName;
+            set => SetProperty(ref limitUserName, value);
+        }
+
+        public string? CommandName
+        {
+            get => commandName;
+            set => SetProperty(ref commandName, value);
         }
     }
 }
