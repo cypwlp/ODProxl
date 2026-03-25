@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace ODProxl.ViewModels.Dialogs
 {
-    public class LoginDialogViewModel(IDialogService? dialogService, IDataService? dataService) : BindableBase,IDialogAware
+    public class LoginDialogViewModel: BindableBase,IDialogAware
     {
         #region IDialogAware Implementation
         public DialogCloseListener RequestClose { get; private set; }
@@ -18,13 +18,18 @@ namespace ODProxl.ViewModels.Dialogs
         #endregion
 
         #region 字段
-        private readonly IDialogService? _dialogService = dialogService;
-        private readonly IDataService? _dataService = dataService;
+        private readonly IDialogService? _dialogService;
+        private readonly IDataService? _dataService;
         private RemoteService.LoginInfo? logInfo;
         private string? _userName;
         private string? _password;
         private string _database = "TopmixData";
         public DelegateCommand LoginCommand => new (async () => await LoginAsync());
+        public LoginDialogViewModel(IDialogService? dialogService = null, IDataService? dataService = null)
+        {
+            _dialogService = dialogService;
+            _dataService = dataService;
+        }
 
         #endregion
 

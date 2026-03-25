@@ -30,9 +30,10 @@ namespace ODProxl
         protected override void RegisterTypes(IContainerRegistry containerRegistry)
         {
             containerRegistry.RegisterDialog<LoginDialog, LoginDialogViewModel>();
-            containerRegistry.RegisterDialogWindow<CustomDialogWindow>();
             containerRegistry.RegisterForNavigation<MainWin, MainWinViewModel>();
             containerRegistry.Register<IDataService, DataService>();
+            containerRegistry.Register<IGeoLocationService, GeoLocationService>();
+            //containerRegistry.Register<IDataService, DataService>();
 
         }
 
