@@ -7,9 +7,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="Pages\" />
-	  <PackageReference Include="Prism.Avalonia" />
-	  <PackageReference Include="Prism.DryIoc.Avalonia" />
+    <ProjectReference Include="..\ODProxl.EntityModels\ODProxl.EntityModels.csproj" />
+    <ProjectReference Include="..\ODProxl.Utils\ODProxl.Utils.csproj" />
   </ItemGroup>
 
 </Project>

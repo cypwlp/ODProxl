@@ -1,0 +1,26 @@
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Avalonia 系列 -->
+    <PackageVersion Include="Avalonia" Version="11.3.11" />
+    <PackageVersion Include="Avalonia.Desktop" Version="11.3.11" />
+    <PackageVersion Include="Avalonia.Themes.Fluent" Version="11.3.11" />
+    <PackageVersion Include="Avalonia.Fonts.Inter" Version="11.3.11" />
+    <PackageVersion Include="Avalonia.Diagnostics" Version="11.3.11" />
+
+    <!-- 其他 UI / 框架套件 -->
+    <PackageVersion Include="Material.Avalonia" Version="3.14.0" />
+    <PackageVersion Include="Prism.Avalonia" Version="9.0.537.11130" />
+    <PackageVersion Include="Prism.DryIoc.Avalonia" Version="9.0.537.11130" />
+    <PackageVersion Include="Velopack" Version="0.0.1298" />
+
+    <!-- 資料庫與 WCF 相關 -->
+    <PackageVersion Include="Microsoft.Data.SqlClient" Version="6.1.4" />
+    <PackageVersion Include="System.ServiceModel.Http" Version="8.0.0" />
+    <PackageVersion Include="System.ServiceModel.NetTcp" Version="8.0.0" />
+    <PackageVersion Include="System.ServiceModel.Primitives" Version="8.0.0" />
+  </ItemGroup>
+</Project>

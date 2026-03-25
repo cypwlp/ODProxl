@@ -6,23 +6,32 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Avalonia" Version="11.3.11" />
-    <PackageReference Include="Avalonia.Desktop" Version="11.3.11" />
-    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.11" />
-    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.11" />
+    <ItemGroup>
+    <PackageReference Include="Avalonia" />
+    <PackageReference Include="Avalonia.Desktop" />
+    <PackageReference Include="Avalonia.Themes.Fluent" />
+    <PackageReference Include="Avalonia.Fonts.Inter" />
+    
     <!--Condition below is needed to remove Avalonia.Diagnostics package from build output in Release configuration.-->
-    <PackageReference Include="Avalonia.Diagnostics" Version="11.3.11">
+    <PackageReference Include="Avalonia.Diagnostics">
       <IncludeAssets Condition="'$(Configuration)' != 'Debug'">None</IncludeAssets>
       <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="Material.Avalonia" Version="3.14.0" />
-    <PackageReference Include="Prism.DryIoc.Avalonia" Version="9.0.537.11130" />
-    <PackageReference Include="Velopack" Version="0.0.1298" />
+    
+    <PackageReference Include="Material.Avalonia" />
+    <PackageReference Include="Prism.Avalonia" />           <!-- 新增這行 -->
+    <PackageReference Include="Prism.DryIoc.Avalonia" />
+    <PackageReference Include="Velopack" />
   </ItemGroup>
 
   <ItemGroup>
     <Folder Include="Pages\" />
-    <Folder Include="Dialogs\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ODProxl.EntityModels\ODProxl.EntityModels.csproj" />
+    <ProjectReference Include="..\ODProxl.Utils\ODProxl.Utils.csproj" />
+    <ProjectReference Include="..\Services\ODProxl.Services.csproj" />
+    <ProjectReference Include="..\ViewModels\ODProxl.ViewModels.csproj" />
   </ItemGroup>
 </Project>
