@@ -36,65 +36,17 @@ namespace ODProxl
             containerRegistry.Register<IDataService>(() => new DataService("http://www.topmix.net/dataservice//GetData.asmx")); 
             containerRegistry.Register<IGeoLocationService, GeoLocationService>();
             containerRegistry.Register<IDialogService, DialogService>();
-
-
+            containerRegistry.Register<IUpdateService, UpdateService>();
         }
 
         private async Task CheckForUpdatesAsync()
         {
-            string countryCode = null;
-            using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15)))
-            {
-                try
-                {
-                    var geoLocationService = Container.Resolve<IGeoLocationService>();
-                    countryCode = await geoLocationService.GetCountryCodeAsync(cts.Token);
-                }
-                catch (OperationCanceledException)
-                {
-
-                }
-            }
-
-            try
-            {
-                bool useChinaMirror = countryCode == "CN";
-                //IUpdateSource source;
-                //if (useChinaMirror)
-                //{
-                //    source = new SimpleFileSource(new System.IO.DirectoryInfo("http://129.204.149.106:8080/releases"));
-                //}
-                //else
-                //{
-                //    source = new GithubSource("https://github.com/cypwlp/OB", "", false);
-                //}
-                var source = new GithubSource("https://github.com/cypwlp/OB", "", false);
-                var mgr = new UpdateManager(source);
-                var updateInfo = await mgr.CheckForUpdatesAsync();
-                if (updateInfo == null)
-                {
-                    return;
-                }
-                await Dispatcher.UIThread.InvokeAsync(async () =>
-                {
-                    var dialogService = Container.Resolve<IDialogService>();
-                    var parameters = new DialogParameters
-            {
-                { "UpdateInfo", updateInfo }
-            };
-                    var result = await dialogService.ShowDialogAsync("UpdateDialog", parameters);
-
-                    if (result?.Result == ButtonResult.OK)
-                    {
-                        await mgr.DownloadUpdatesAsync(updateInfo);
-                        mgr.ApplyUpdatesAndRestart(updateInfo);
-                    }
-                });
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Velopack 更新檢查失敗: {ex.Message}");
-            }
+            string countryCode;
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+            var geoLocationService = Container.Resolve<IGeoLocationService>();
+            countryCode = await geoLocationService.GetCountryCodeAsync(cts.Token);
+            var updateService = Container.Resolve<IUpdateService>();
+            await updateService.UpdateODProxlAsync(countryCode);
         }
         private async Task StartWithLoginAsync(IClassicDesktopStyleApplicationLifetime desktopLifetime)
         {
@@ -132,7 +84,6 @@ namespace ODProxl
 
                         await vm.DefaultNavigateAsync();
 
-                        // 登入成功後立即檢查更新（最推薦的位置）
                         _ = CheckForUpdatesAsync();
 
                         splashWindow.Close();

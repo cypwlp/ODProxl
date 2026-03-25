@@ -1,8 +1,86 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+﻿<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-             x:Class="ODProxl.UploadDialog">
-  Welcome to Avalonia!
+             mc:Ignorable="d" d:DesignWidth="460" d:DesignHeight="520"
+             xmlns:avalonia="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="ODProxl.Dialogs.UploadDialog">
+
+    <Border Padding="32" Background="{DynamicResource MaterialPaperBackgroundColor}"
+            CornerRadius="12" BoxShadow="0 8 32 0 #40000000">
+        
+        <Grid RowDefinitions="Auto, *, Auto, Auto, Auto" ColumnDefinitions="Auto,*" 
+              RowSpacing="24" ColumnSpacing="16">
+            
+            <!-- 標題區 -->
+            <StackPanel Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" 
+                        Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                <avalonia:MaterialIcon Kind="CloudUpload" Width="32" Height="32" 
+                                       Foreground="{DynamicResource SystemAccentColor}" />
+                <StackPanel Spacing="2">
+                    <TextBlock Text="上傳新版本" 
+                               FontSize="20" FontWeight="SemiBold" 
+                               Foreground="{DynamicResource MaterialForegroundColor}" />
+                    <TextBlock Text="請填寫版本資訊並確認上傳" 
+                               FontSize="13" Opacity="0.7" />
+                </StackPanel>
+            </StackPanel>
+
+            <!-- 版本號 -->
+            <TextBlock Grid.Row="1" Grid.Column="0" 
+                       Text="版本號：" VerticalAlignment="Center" 
+                       FontWeight="Medium" />
+            <TextBox Grid.Row="1" Grid.Column="1" 
+                     Text="{Binding Version}" 
+                     Watermark="例如：1.2.3" 
+                     Classes="MaterialOutlined" />
+
+            <!-- 擴展文件 -->
+            <TextBlock Grid.Row="2" Grid.Column="0" 
+                       Text="擴展文件：" VerticalAlignment="Center" 
+                       FontWeight="Medium" />
+            <StackPanel Grid.Row="2" Grid.Column="1" Spacing="8">
+                <TextBox Text="{Binding ExtensionFile}" 
+                         Watermark="選擇或輸入擴展檔案路徑 (.zip / .exe 等)" 
+                         Classes="MaterialOutlined" />
+                <TextBlock Text="支援 .zip、.exe、.dll 等格式" 
+                           FontSize="12" Opacity="0.6" />
+            </StackPanel>
+
+            <!-- 更新說明 -->
+            <TextBlock Grid.Row="3" Grid.Column="0" 
+                       Text="更新說明：" VerticalAlignment="Top" 
+                       FontWeight="Medium" Margin="0,6,0,0" />
+            <TextBox Grid.Row="3" Grid.Column="1" 
+                     Text="{Binding UpdateDescription}" 
+                     Watermark="請詳細描述本次更新的內容與改進..."
+                     AcceptsReturn="True" 
+                     TextWrapping="Wrap" 
+                     Height="140" 
+                     VerticalContentAlignment="Top"
+                     Classes="MaterialOutlined" />
+
+            <!-- 按鈕區 -->
+            <StackPanel Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" 
+                        Orientation="Horizontal" HorizontalAlignment="Right" 
+                        Spacing="12" Margin="0,12,0,0">
+                
+                <Button Content="取消" 
+                        Command="{Binding CancelCommand}"
+                        Theme="{StaticResource MaterialFlatButton}" 
+                        MinWidth="100" />
+
+                <Button Command="{Binding UpdateCommand}" 
+                        Background="{DynamicResource SystemAccentColor}" 
+                        Foreground="White" 
+                        MinWidth="120">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <avalonia:MaterialIcon Kind="Upload" Width="20" Height="20" />
+                        <TextBlock Text="確認上傳" VerticalAlignment="Center" FontWeight="Medium" />
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+
+        </Grid>
+    </Border>
 </UserControl>

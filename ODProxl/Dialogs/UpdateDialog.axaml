@@ -1,8 +1,42 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+﻿<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+                          xmlns:avalonia="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+         mc:Ignorable="d" d:DesignWidth="350" d:DesignHeight="200"
              x:Class="ODProxl.UpdateDialog">
-  Welcome to Avalonia!
+    <Border Background="{DynamicResource SystemRegionBrush}"
+            CornerRadius="12"
+            Padding="24">
+        <Grid RowDefinitions="Auto, *, Auto">
+            <!-- 標題 -->
+            <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="12" Margin="0,0,0,16">
+                <avalonia:MaterialIcon Kind="Update" Width="28" Height="28" Foreground="{DynamicResource SystemAccentColor}"/>
+                <TextBlock Text="發現新版本" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center"/>
+            </StackPanel>
+            
+            <!-- 內容 -->
+            <TextBlock Grid.Row="1"
+                       Text="{Binding NewVersion, StringFormat='新版本 {0} 已經準備就緒...'}"
+                       FontSize="14"
+                       TextWrapping="Wrap"
+                       Foreground="{DynamicResource SystemBaseHighColor}"
+                       Opacity="0.8"/>
+            
+            <!-- 按鈕 -->
+            <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="12" Margin="0,24,0,0">
+                <Button Content="暫時不要"
+                        Command="{Binding CancelCommand}"
+                        Theme="{StaticResource MaterialFlatButton}"/>
+                <Button Background="{DynamicResource SystemAccentColor}"
+                        Foreground="White"
+                        Command="{Binding UpdateCommand}">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <avalonia:MaterialIcon Kind="Download" Width="18" Height="18"/>
+                        <TextBlock Text="立即更新" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+        </Grid>
+    </Border>
 </UserControl>

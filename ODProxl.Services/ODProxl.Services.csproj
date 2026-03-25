@@ -9,6 +9,7 @@
   <ItemGroup>
     <ProjectReference Include="..\ODProxl.EntityModels\ODProxl.EntityModels.csproj" />
     <ProjectReference Include="..\ODProxl.Utils\ODProxl.Utils.csproj" />
+	  <PackageReference Include="Velopack"/>
   </ItemGroup>
 
 </Project>

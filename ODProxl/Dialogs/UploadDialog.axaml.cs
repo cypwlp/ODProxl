@@ -2,7 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
 
-namespace ODProxl;
+namespace ODProxl.Dialogs;
 
 public partial class UploadDialog : UserControl
 {
