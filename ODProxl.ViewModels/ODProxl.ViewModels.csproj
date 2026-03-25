@@ -13,7 +13,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Services\ODProxl.Services.csproj" />
+    <ProjectReference Include="..\ODProxl.Services\ODProxl.Services.csproj" />
   </ItemGroup>
 
 </Project>

@@ -3,8 +3,8 @@
     <File Path="Directory.Packages.props" />
   </Folder>
   <Project Path="ODProxl.EntityModels/ODProxl.EntityModels.csproj" Id="f9e59c20-002c-423f-8dbe-0867039a760e" />
+  <Project Path="ODProxl.Services/ODProxl.Services.csproj" />
   <Project Path="ODProxl.Utils/ODProxl.Utils.csproj" Id="93dc0af8-dfab-4b7e-8f46-b71bb0478855" />
+  <Project Path="ODProxl.ViewModels/ODProxl.ViewModels.csproj" />
   <Project Path="ODProxl/ODProxl.csproj" />
-  <Project Path="Services/ODProxl.Services.csproj" Id="1148bbdf-1eee-432d-bfdb-fd7bf350cf43" />
-  <Project Path="ViewModels/ODProxl.ViewModels.csproj" Id="50985c19-8f5f-4493-94ef-35372c95355c" />
 </Solution>

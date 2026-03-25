@@ -17,6 +17,11 @@ namespace ODProxl.ViewModels
         private readonly IRegionManager? _regionManager;
         private IRegionNavigationJournal? _journal;
         private LoginInfo? _loginInfo;
+        public MainWinViewModel(IRegionManager? regionManager)
+        {
+            _regionManager = regionManager;
+           LoadMenuAsync().ConfigureAwait(false);
+        }
         #endregion
 
         #region 属性

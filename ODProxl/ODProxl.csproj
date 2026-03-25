@@ -28,9 +28,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\ODProxl.EntityModels\ODProxl.EntityModels.csproj" />
+    <ProjectReference Include="..\ODProxl.Services\ODProxl.Services.csproj" />
     <ProjectReference Include="..\ODProxl.Utils\ODProxl.Utils.csproj" />
-    <ProjectReference Include="..\Services\ODProxl.Services.csproj" />
-    <ProjectReference Include="..\ViewModels\ODProxl.ViewModels.csproj" />
+    <ProjectReference Include="..\ODProxl.ViewModels\ODProxl.ViewModels.csproj" />
   </ItemGroup>
 
   <ItemGroup>
