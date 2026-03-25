@@ -3,6 +3,7 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
+    <ApplicationIcon>avalonia-logo.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
 
@@ -35,6 +36,7 @@
 
   <ItemGroup>
 		  <AvaloniaResource Include="Assets\**" />
+		  <Content Include="avalonia-logo.ico" />
     <None Update="Assets\app-icon.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

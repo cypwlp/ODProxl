@@ -34,6 +34,7 @@ namespace ODProxl
             containerRegistry.RegisterDialog<LoginDialog, LoginDialogViewModel>();
             containerRegistry.RegisterForNavigation<MainWin, MainWinViewModel>();
             containerRegistry.RegisterForNavigation<HomePage, HomePageViewModel>();
+            containerRegistry.RegisterDialog<UploadDialog, UploadDialogViewModel>();
             containerRegistry.Register<IDataService>(() => new DataService("http://www.topmix.net/dataservice//GetData.asmx")); 
             containerRegistry.Register<IGeoLocationService, GeoLocationService>();
             containerRegistry.Register<IDialogService, DialogService>();

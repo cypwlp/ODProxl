@@ -1,23 +1,22 @@
 ﻿using Material.Icons;
 using Prism.Mvvm;
 using System.Collections.ObjectModel;
+using System.Windows.Input;   // 新增
+
 namespace ODProxl.EntityModels
 {
-    public class LeftMenuItem: BindableBase
+    public class LeftMenuItem : BindableBase
     {
-
         private MaterialIconKind _icon;
         private string? _title;
         private string? _viewName;
         private ObservableCollection<string>? limitUserName;
         private string? commandName;
+        private ICommand? _command;   // 新增
 
         public ObservableCollection<LeftMenuItem> SubItems { get; set; } = new();
 
-        // 輔助屬性：判斷是否有子項
         public bool HasSubItems => SubItems != null && SubItems.Count > 0;
-
-        // 輔助屬性：判斷是否為導航項（有 ViewName 才能跳轉）
         public bool IsNavigationItem => !string.IsNullOrEmpty(ViewName);
 
         public MaterialIconKind Icon
@@ -37,6 +36,7 @@ namespace ODProxl.EntityModels
             get => _viewName;
             set => SetProperty(ref _viewName, value);
         }
+
         public ObservableCollection<string>? LimitUserName
         {
             get => limitUserName;
@@ -47,6 +47,13 @@ namespace ODProxl.EntityModels
         {
             get => commandName;
             set => SetProperty(ref commandName, value);
+        }
+
+        // 新增：菜单项的命令
+        public ICommand? Command
+        {
+            get => _command;
+            set => SetProperty(ref _command, value);
         }
     }
 }
