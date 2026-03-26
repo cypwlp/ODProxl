@@ -26,6 +26,33 @@ namespace ODProxl.Services.impls
             _dialogService = dialogService;
         }
 
+        //public async Task UpdateODProxlAsync(string countryCode)
+        //{
+        //    if (countryCode == "CN")
+        //    {
+        //        await UpdateForChinaAsync();
+        //    }
+        //    else
+        //    {
+        //        // 國際版 Velopack
+        //        var source = new GithubSource("https://github.com/cypwlp/ODProxl.git", "", false);
+        //        var mgr = new UpdateManager(source);
+        //        var updateInfo = await mgr.CheckForUpdatesAsync();
+        //        if (updateInfo == null) return;
+
+        //        await Dispatcher.UIThread.InvokeAsync(async () =>
+        //        {
+        //            var parameters = new DialogParameters { { "UpdateInfo", updateInfo } };
+        //            var result = await _dialogService.ShowDialogAsync("UpdateDialog", parameters);
+        //            if (result?.Result == ButtonResult.OK)
+        //            {
+        //                await mgr.DownloadUpdatesAsync(updateInfo);
+        //                mgr.ApplyUpdatesAndRestart(updateInfo);
+        //            }
+        //        });
+        //    }
+        //}
+
         public async Task UpdateODProxlAsync(string countryCode)
         {
             if (countryCode == "CN")
@@ -34,25 +61,42 @@ namespace ODProxl.Services.impls
             }
             else
             {
-                // 國際版 Velopack
-                var source = new GithubSource("https://github.com/cypwlp/ODProxl.git", "", false);
-                var mgr = new UpdateManager(source);
-                var updateInfo = await mgr.CheckForUpdatesAsync();
-                if (updateInfo == null) return;
-
-                await Dispatcher.UIThread.InvokeAsync(async () =>
+                // 國際版 Velopack - Debug 模式下跳過，避免 NotInstalledException
+                if (System.Diagnostics.Debugger.IsAttached)
                 {
-                    var parameters = new DialogParameters { { "UpdateInfo", updateInfo } };
-                    var result = await _dialogService.ShowDialogAsync("UpdateDialog", parameters);
-                    if (result?.Result == ButtonResult.OK)
+                    Console.WriteLine("[Debug 模式] 已跳過 Velopack 更新檢查");
+                    return;
+                }
+
+                try
+                {
+                    var source = new GithubSource("https://github.com/cypwlp/ODProxl.git", "", false);
+                    var mgr = new UpdateManager(source);
+                    var updateInfo = await mgr.CheckForUpdatesAsync();
+
+                    if (updateInfo == null)
                     {
-                        await mgr.DownloadUpdatesAsync(updateInfo);
-                        mgr.ApplyUpdatesAndRestart(updateInfo);
+                        Console.WriteLine("[Velopack] 目前已是最新版本");
+                        return;
                     }
-                });
+
+                    await Dispatcher.UIThread.InvokeAsync(async () =>
+                    {
+                        var parameters = new DialogParameters { { "UpdateInfo", updateInfo } };
+                        var result = await _dialogService.ShowDialogAsync("UpdateDialog", parameters);
+                        if (result?.Result == ButtonResult.OK)
+                        {
+                            await mgr.DownloadUpdatesAsync(updateInfo);
+                            mgr.ApplyUpdatesAndRestart(updateInfo);
+                        }
+                    });
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Velopack 更新檢查失敗：{ex.Message}");
+                }
             }
         }
-
         private async Task UpdateForChinaAsync()
         {
             string rid = PlatformHelper.GetCurrentRid();
