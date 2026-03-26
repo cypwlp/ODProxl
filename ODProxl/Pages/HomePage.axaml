@@ -4,5 +4,5 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="ODProxl.HomePage">
-<TextBlock>2.0.4測試版本</TextBlock>
+<TextBlock>2.0.6測試版本</TextBlock>
 </UserControl>

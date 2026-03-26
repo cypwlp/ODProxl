@@ -10,6 +10,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Velopack;
 using Velopack.Sources;
+using ODProxl;
 
 namespace ODProxl.ViewModels.Dialogs
 {
@@ -100,18 +101,46 @@ namespace ODProxl.ViewModels.Dialogs
             }
         }
 
+        //private void GetCurrentVersion()
+        //{
+        //    if (countryCode == "CN")
+        //    {
+        //        var mgr = new UpdateManager(new SimpleWebSource("http://129.204.149.106:8080/ODProxl/"));
+        //        CurrentVersion = mgr.CurrentVersion?.ToString() ?? "開發版本";
+        //        return;
+        //    }
+        //    else
+        //    {
+        //        var mgr = new UpdateManager(new GithubSource("https://github.com/cypwlp/ODProxl", "", false));
+        //        CurrentVersion = mgr.CurrentVersion?.ToString() ?? "開發版本";
+        //    }
+        //}
         private void GetCurrentVersion()
         {
-            if (countryCode == "CN")
+            try
             {
-                var mgr = new UpdateManager(new SimpleWebSource("http://129.204.149.106:8080/ODProxl/"));
-                CurrentVersion = mgr.CurrentVersion?.ToString() ?? "開發版本";
-                return;
+                // 使用執行中的組件版本（推薦方式，不依賴特定類別名稱）
+                var assembly = System.Reflection.Assembly.GetExecutingAssembly();
+                var version = assembly.GetName().Version;
+                CurrentVersion = version?.ToString(3) ?? "1.0.0";
+
+                // 如果已經用 Velopack 打包安裝，優先顯示 Velopack 的版本
+                try
+                {
+                    var mgr = new UpdateManager(new Velopack.Sources.SimpleWebSource("http://127.0.0.1/dummy"));
+                    if (mgr.IsInstalled && mgr.CurrentVersion != null)
+                    {
+                        CurrentVersion = mgr.CurrentVersion.ToString();
+                    }
+                }
+                catch
+                {
+                    // 忽略開發階段或 dummy source 產生的錯誤
+                }
             }
-            else
+            catch (Exception)
             {
-                var mgr = new UpdateManager(new GithubSource("https://github.com/cypwlp/OB", "", false));
-                CurrentVersion = mgr.CurrentVersion?.ToString() ?? "開發版本";
+                CurrentVersion = "開發版本";
             }
         }
         #endregion
