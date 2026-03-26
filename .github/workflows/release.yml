@@ -7,9 +7,9 @@ on:
 
 jobs:
   publish:
-    # 仅当推送的是 tag 时才执行（双重保障）
+    # 僅當推送的是 tag 時才執行（雙重保障）
     if: startsWith(github.ref, 'refs/tags/v')
-    name: Publish for ${{ matrix.os }} (${{ matrix.rid }})
+    name: Publish for ${{ matrix.rid }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -17,10 +17,10 @@ jobs:
           - os: windows-latest
             rid: win-x64
             executable: ODProxl.exe
-          - os: macos-15-intel                 # Intel x64
+          - os: macos-15-intel
             rid: osx-x64
             executable: ODProxl
-          - os: macos-latest                   # Apple Silicon ARM64
+          - os: macos-latest
             rid: osx-arm64
             executable: ODProxl
           - os: ubuntu-22.04
@@ -61,20 +61,20 @@ jobs:
             echo "BUNDLE_ID=" >> $GITHUB_ENV
           elif [ "$RUNNER_OS" == "macOS" ]; then
             mkdir -p AppIcon.iconset
-            sips -z 16 16     ODProxl/Assets/app-icon.png --out AppIcon.iconset/icon_16x16.png
-            sips -z 32 32     ODProxl/Assets/app-icon.png --out AppIcon.iconset/icon_16x16@2x.png
-            sips -z 32 32     ODProxl/Assets/app-icon.png --out AppIcon.iconset/icon_32x32.png
-            sips -z 64 64     ODProxl/Assets/app-icon.png --out AppIcon.iconset/icon_32x32@2x.png
-            sips -z 128 128   ODProxl/Assets/app-icon.png --out AppIcon.iconset/icon_128x128.png
-            sips -z 256 256   ODProxl/Assets/app-icon.png --out AppIcon.iconset/icon_128x128@2x.png
-            sips -z 256 256   ODProxl/Assets/app-icon.png --out AppIcon.iconset/icon_256x256.png
-            sips -z 512 512   ODProxl/Assets/app-icon.png --out AppIcon.iconset/icon_256x256@2x.png
-            sips -z 512 512   ODProxl/Assets/app-icon.png --out AppIcon.iconset/icon_512x512.png
+            sips -z 16 16 ODProxl/Assets/app-icon.png --out AppIcon.iconset/icon_16x16.png
+            sips -z 32 32 ODProxl/Assets/app-icon.png --out AppIcon.iconset/icon_16x16@2x.png
+            sips -z 32 32 ODProxl/Assets/app-icon.png --out AppIcon.iconset/icon_32x32.png
+            sips -z 64 64 ODProxl/Assets/app-icon.png --out AppIcon.iconset/icon_32x32@2x.png
+            sips -z 128 128 ODProxl/Assets/app-icon.png --out AppIcon.iconset/icon_128x128.png
+            sips -z 256 256 ODProxl/Assets/app-icon.png --out AppIcon.iconset/icon_128x128@2x.png
+            sips -z 256 256 ODProxl/Assets/app-icon.png --out AppIcon.iconset/icon_256x256.png
+            sips -z 512 512 ODProxl/Assets/app-icon.png --out AppIcon.iconset/icon_256x256@2x.png
+            sips -z 512 512 ODProxl/Assets/app-icon.png --out AppIcon.iconset/icon_512x512.png
             sips -z 1024 1024 ODProxl/Assets/app-icon.png --out AppIcon.iconset/icon_512x512@2x.png
             iconutil -c icns AppIcon.iconset -o ODProxl/Assets/app-icon.icns
             echo "ICON=./ODProxl/Assets/app-icon.icns" >> $GITHUB_ENV
             echo "BUNDLE_ID=--bundleId com.cypilu.ODProxl" >> $GITHUB_ENV
-          else  # Linux
+          else # Linux
             echo "ICON=./ODProxl/Assets/app-icon.png" >> $GITHUB_ENV
             echo "BUNDLE_ID=" >> $GITHUB_ENV
           fi
@@ -98,6 +98,7 @@ jobs:
             --mainExe "${{ matrix.executable }}" \
             --icon "${{ env.ICON }}" \
             ${{ env.BUNDLE_ID }} \
+            --channel "${{ matrix.rid }}" \
             --outputDir "./Releases"
 
       # macOS: rename Velopack artifacts to include the correct RID
@@ -107,7 +108,7 @@ jobs:
         run: |
           cd ./Releases
           
-          # Rename the main artifacts with correct RID (nupkg, delta, etc.)
+          # Rename main artifacts (nupkg, delta, etc.)
           for f in ODProxl-*-osx-*; do
             if [ -f "$f" ]; then
               newname=$(echo "$f" | sed "s/-osx-/-${{ matrix.rid }}-/")
@@ -119,7 +120,7 @@ jobs:
           [ -f "RELEASES-osx" ] && mv "RELEASES-osx" "RELEASES-${{ matrix.rid }}"
           [ -f "releases.osx.json" ] && mv "releases.osx.json" "releases.${{ matrix.rid }}.json"
           
-          # Rename Portable.zip and Setup.pkg to include the RID
+          # Rename Portable.zip and Setup.pkg
           [ -f "ODProxl-osx-Portable.zip" ] && mv "ODProxl-osx-Portable.zip" "ODProxl-${{ matrix.rid }}-Portable.zip"
           [ -f "ODProxl-osx-Setup.pkg" ] && mv "ODProxl-osx-Setup.pkg" "ODProxl-${{ matrix.rid }}-Setup.pkg"
           
@@ -153,7 +154,7 @@ jobs:
           path: ./Releases
           if-no-files-found: error
 
-  # 同步所有平台产物到国内 WebDAV 服务器（使用 rclone 实现稳定同步）
+  # 同步所有平台產物到國內 WebDAV 伺服器
   sync-to-china:
     name: Sync to China Server (WebDAV)
     needs: publish
@@ -167,7 +168,6 @@ jobs:
       - name: Merge Releases
         run: |
           mkdir -p ./merged_releases
-          # 每个 artifact 位于 releases-<rid> 子目录中
           for rid_dir in ./all_releases/releases-*; do
             if [ -d "$rid_dir" ]; then
               echo "Copying $rid_dir to ./merged_releases"
@@ -182,13 +182,12 @@ jobs:
           WEBDAV_USER: ${{ secrets.SERVER_USER }}
           WEBDAV_PASS: ${{ secrets.SERVER_PASSWORD }}
         run: |
-          # 检查环境变量
           if [ -z "$WEBDAV_URL" ] || [ -z "$WEBDAV_USER" ] || [ -z "$WEBDAV_PASS" ]; then
             echo "ERROR: WebDAV credentials not set."
             exit 1
           fi
 
-          # 安装 rclone
+          # 安裝 rclone
           curl -fsSL https://rclone.org/install.sh | sudo bash
 
           # 配置 rclone
@@ -202,5 +201,19 @@ jobs:
           pass = $(rclone obscure "$WEBDAV_PASS")
           EOF
 
-          # 同步文件（自动重试，支持断点续传）
-          rclone sync ./merged_releases webdav:/ --progress --retries 5 --low-level-retries 10 --transfers 4 --checksum
+          # 優化後的 sync 指令（提升傳輸速度）
+          rclone sync ./merged_releases webdav:/ \
+            --progress \
+            --transfers 12 \
+            --checkers 24 \
+            --multi-thread-streams 4 \
+            --buffer-size 64M \
+            --vfs-read-chunk-size 64M \
+            --timeout 10m \
+            --contimeout 2m \
+            --retries 10 \
+            --low-level-retries 20 \
+            --retries-sleep 15s \
+            --no-checksum \
+            --fast-list \
+            --size-only
