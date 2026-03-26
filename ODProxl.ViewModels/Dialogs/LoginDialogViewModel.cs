@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace ODProxl.ViewModels.Dialogs
 {
-    public class LoginDialogViewModel: BindableBase,IDialogAware
+    public class LoginDialogViewModel : BindableBase, IDialogAware
     {
         #region IDialogAware Implementation
         public string Title => "登入系統";
@@ -25,7 +25,7 @@ namespace ODProxl.ViewModels.Dialogs
         private string? _userName;
         private string? _password;
         private string _database = "TopmixData";
-        public DelegateCommand LoginCommand => new (async () => await LoginAsync());
+        public DelegateCommand LoginCommand => new(async () => await LoginAsync());
         public LoginDialogViewModel(IDataService dataService, IDialogService dialogService)
         {
             _dataService = dataService;
@@ -59,9 +59,9 @@ namespace ODProxl.ViewModels.Dialogs
             if (success)
             {
                 var loginInfo = await _dataService.GetLoginInfoAsync();
-                var paras=new DialogParameters();
+                var paras = new DialogParameters();
                 paras.Add("LoginInfo", loginInfo);
-                RequestClose.Invoke(paras,ButtonResult.OK);
+                RequestClose.Invoke(paras, ButtonResult.OK);
             }
             else
             {
