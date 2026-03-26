@@ -1,0 +1,83 @@
+﻿<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:dialogs="using:ODProxl.ViewModels.Dialogs"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="400"
+             xmlns:avalonia="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:DataType="dialogs:AboutDialogViewModel"
+             x:Class="ODProxl.AboutDialog">
+    <Border Background="{DynamicResource SystemRegionBrush}"
+            CornerRadius="12"
+            Padding="30">
+        <Grid RowDefinitions="Auto, Auto, *, Auto">
+            
+            <!-- Logo 與 標題 -->
+            <StackPanel Grid.Row="0" Spacing="15" HorizontalAlignment="Center">
+                <Border Width="80" Height="80" 
+                        CornerRadius="20" 
+                        Background="White"
+                        BoxShadow="0 4 10 0 #20000000">
+                    <!-- 請確保 Assets/app-icon.png 屬性設為 AvaloniaResource -->
+                    <Image Source="/Assets/avalonia-logo.ico" Margin="10"/>
+                </Border>
+                
+                <StackPanel Spacing="4">
+                    <TextBlock Text="OB - PDF目標檢測工具" 
+                               FontSize="22" 
+                               FontWeight="Bold" 
+                               HorizontalAlignment="Center"/>
+                    <TextBlock Text="基於 YOLO 深度學習算法" 
+                               FontSize="13" 
+                               Foreground="Gray"
+                               HorizontalAlignment="Center"/>
+                </StackPanel>
+            </StackPanel>
+
+            <!-- 版本資訊與更新按鈕 -->
+            <StackPanel Grid.Row="1" Margin="0,25,0,0" HorizontalAlignment="Center">
+                <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+                    <TextBlock Text="版本" FontSize="14" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding CurrentVersion}" 
+                               FontSize="14" 
+                               FontWeight="SemiBold" 
+                               VerticalAlignment="Center"
+                               Foreground="{DynamicResource SystemAccentColor}"/>
+                </StackPanel>
+
+                <Button Command="{Binding CheckUpdateCommand}" 
+                        Margin="0,15,0,0"
+                        Padding="10,5"
+                        Background="Transparent" 
+                        BorderThickness="0" 
+                        Cursor="Hand">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <avalonia:MaterialIcon Kind="{Binding UpdateIcon}" 
+                                               Width="18" Height="18" 
+                                               Foreground="DodgerBlue"/>
+                        <TextBlock Text="{Binding UpdateButtonText}" 
+                                   Foreground="DodgerBlue" 
+                                   FontSize="13"
+                                   VerticalAlignment="Center"
+                                   TextDecorations="Underline"/>
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+
+            <Separator Grid.Row="2" VerticalAlignment="Center" Height="1" 
+                       Background="#EEE" Margin="0,20"/>
+
+            <!-- 底部版權 -->
+            <StackPanel Grid.Row="3" Spacing="4">
+                <TextBlock Text="© 2025 Topmix Ltd. All rights reserved." 
+                           FontSize="11" 
+                           Opacity="0.6"
+                           HorizontalAlignment="Center"/>
+                <TextBlock Text="Developed by Li Wei" 
+                           FontSize="11" 
+                           Foreground="Gray"
+                           HorizontalAlignment="Center"/>
+            </StackPanel>
+        </Grid>
+    </Border>
+</UserControl>

@@ -34,12 +34,12 @@ namespace ODProxl
             containerRegistry.RegisterDialog<LoginDialog, LoginDialogViewModel>();
             containerRegistry.RegisterForNavigation<MainWin, MainWinViewModel>();
             containerRegistry.RegisterForNavigation<HomePage, HomePageViewModel>();
-            containerRegistry.RegisterDialog<UploadDialog, UploadDialogViewModel>();
             containerRegistry.Register<IDataService>(() => new DataService("http://www.topmix.net/dataservice//GetData.asmx")); 
             containerRegistry.Register<IGeoLocationService, GeoLocationService>();
             containerRegistry.Register<IDialogService, DialogService>();
             containerRegistry.Register<IUpdateService, UpdateService>();
-            containerRegistry.Register<IUploadService, UploadService>();
+            containerRegistry.RegisterDialog<UpdateDialog, UpdateDialogViewModel>();
+            containerRegistry.RegisterDialog<AboutDialog,AboutDialogViewModel>();
         }
 
         private async Task CheckForUpdatesAsync()

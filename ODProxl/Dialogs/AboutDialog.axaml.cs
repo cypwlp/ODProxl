@@ -2,11 +2,11 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
 
-namespace ODProxl.Dialogs;
+namespace ODProxl;
 
-public partial class UploadDialog : UserControl
+public partial class AboutDialog : UserControl
 {
-    public UploadDialog()
+    public AboutDialog()
     {
         InitializeComponent();
     }

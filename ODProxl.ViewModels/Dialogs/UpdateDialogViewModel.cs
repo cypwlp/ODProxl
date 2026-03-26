@@ -16,8 +16,8 @@ namespace ODProxl.ViewModels.Dialogs
             set => SetProperty(ref _newVersion, value);
         }
 
-        public UpdateInfo? UpdateInfo { get; private set; }     // Velopack 用
-        public UpdateManifest? UpdateManifest { get; private set; } // CN 用
+        public UpdateInfo? UpdateInfo { get; private set; } 
+
 
         public DelegateCommand UpdateCommand { get; }
         public DelegateCommand CancelCommand { get; }
