@@ -96,7 +96,7 @@ namespace ODProxl.ViewModels
             // 1. 先建立原始 LeftMenuItem（用來做權限過濾）
             MenuFlyoutItems = new ObservableCollection<LeftMenuItem>
             {
-                new LeftMenuItem { Icon = MaterialIconKind.Account, Title = "個性設置", ViewName = "Personal", LimitUserName = ["AllUser"], Command = new DelegateCommand(async () => await NavigateAsync("Personal")) },
+                new LeftMenuItem { Icon = MaterialIconKind.Account, Title = "個性設置", ViewName = "UserPreferencePage", LimitUserName = ["AllUser"], Command = new DelegateCommand(async () => await NavigateAsync("UserPreferencePage")) },
                 new LeftMenuItem { Icon = MaterialIconKind.Cog, Title = "檢測设置", ViewName = "Settings", LimitUserName = ["AllUser"], Command = new DelegateCommand(async () => await NavigateAsync("Settings")) },
                 new LeftMenuItem { Icon = MaterialIconKind.Information, Title = "關於", ViewName = "AboutDialog", LimitUserName = ["AllUser"], Command = new DelegateCommand(async () => await ShowDialogAsync("AboutDialog")) },
                 new LeftMenuItem { Icon = MaterialIconKind.LogoutVariant, Title = "退出登录", ViewName = null, LimitUserName = ["AllUser"], Command = new DelegateCommand(OnLogout) },

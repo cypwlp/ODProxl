@@ -1,13 +1,39 @@
-﻿using System;
+﻿using Avalonia.Threading;
+using Prism.Dialogs;
+using System;
+using System.Net;
+using System.Net.Http;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
-using Avalonia.Threading;
-using Prism.Dialogs;
 using Velopack;
 using Velopack.Sources;
 
 namespace ODProxl.Services.impls
 {
+    /// <summary>
+    /// 自訂的 HttpClientFileDownloader，用來支援 WebDAV Basic Authentication
+    /// </summary>
+    public class WebDavFileDownloader : HttpClientFileDownloader
+    {
+        private readonly string _username;
+        private readonly string _password;
+
+        public WebDavFileDownloader(string username, string password)
+        {
+            _username = username;
+            _password = password;
+        }
+
+        protected override HttpClientHandler CreateHttpClientHandler()
+        {
+            return new HttpClientHandler
+            {
+                Credentials = new NetworkCredential(_username, _password),
+                PreAuthenticate = true
+            };
+        }
+    }
+
     public class UpdateService : IUpdateService
     {
         private readonly IDialogService _dialogService;
@@ -19,6 +45,7 @@ namespace ODProxl.Services.impls
 
         public async Task UpdateODProxlAsync(string countryCode)
         {
+            // Debug 模式下跳過更新檢查
             if (System.Diagnostics.Debugger.IsAttached)
             {
                 Console.WriteLine("[Debug 模式] 已跳過 Velopack 更新檢查");
@@ -30,12 +57,18 @@ namespace ODProxl.Services.impls
                 // ==================== 國內更新（WebDAV）====================
                 try
                 {
-                    // 取得當前平台的 RID（win-x64、osx-arm64、linux-x64 等）
                     string rid = RuntimeInformation.RuntimeIdentifier;
 
-                    var source = new SimpleWebSource("http://129.204.149.106:8080/ODProxl/");
+                    // ========== 請替換為實際的 WebDAV 帳號密碼 ==========
+                    string username = "WebUser";
+                    string password = "2549979631Wei@";
+                    // ====================================================
 
-                    // 關鍵修正：強制指定 channel，避免請求 releases.win.json 等錯誤檔案
+                    // 使用自訂的 Downloader 支援 WebDAV 認證
+                    var downloader = new WebDavFileDownloader(username, password);
+
+                    var source = new SimpleWebSource("http://129.204.149.106:8080/ODProxl/", downloader);
+
                     var options = new UpdateOptions
                     {
                         ExplicitChannel = rid

@@ -12,6 +12,8 @@
 		<!-- Prism 用在 BindableBase -->
 		<PackageReference Include="Prism.Avalonia" />
 
-		<PackageReference Include="Microsoft.Data.SqlClient"/>
+		<PackageReference Include="Microsoft.Data.SqlClient" />
+
+		<PackageReference Include="Microsoft.ML.OnnxRuntime" />
 	</ItemGroup>
 </Project>

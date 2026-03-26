@@ -25,6 +25,7 @@
     <PackageReference Include="Prism.DryIoc.Avalonia" />
     <PackageReference Include="Velopack" />
 	<PackageReference Include="DialogHost.Avalonia" />
+    <PackageReference  Include="Material.Avalonia.DataGrid"/>
   </ItemGroup>
 
   <ItemGroup>

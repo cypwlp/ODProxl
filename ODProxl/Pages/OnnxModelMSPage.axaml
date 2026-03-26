@@ -1,0 +1,134 @@
+﻿<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:pages="using:ODProxl.ViewModels.Pages"
+             mc:Ignorable="d" d:DesignWidth="1100" d:DesignHeight="700"
+             xmlns:avalonia="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:DataType="pages:OnnxModelMSPageViewModel"
+             x:Class="ODProxl.OnnxModelMSPage">
+    <Border Background="{DynamicResource MaterialCardBackgroundBrush}"
+            CornerRadius="12"
+            Margin="12"
+            BoxShadow="0 8 24 0 #20000000">
+
+        <Grid RowDefinitions="Auto,Auto,*">
+            
+            <!-- 標題 + 搜尋框 -->
+            <DockPanel Grid.Row="0" Margin="24,20,24,16">                
+                <TextBox Name="SearchBox"
+                         DockPanel.Dock="Left"
+                         HorizontalAlignment="Left"
+                         Width="340"
+                         Watermark="搜尋模型名稱..."
+                         Text="{Binding SearchText}"
+                         KeyDown="Search_OnKeyDown"
+                         CornerRadius="24"
+                         Classes="solo">
+                    
+                    <TextBox.InnerLeftContent>
+                        <avalonia:MaterialIcon Kind="Magnify" 
+                                               Width="20" Height="20" 
+                                               Margin="14,0,10,0"
+                                               Foreground="{DynamicResource MaterialForegroundBrush}"/>
+                    </TextBox.InnerLeftContent>
+                    
+                    <TextBox.InnerRightContent>
+                        <Button Name="SearchButton"
+                                Width="38" Height="38"
+                                CornerRadius="19"
+                                Classes="flat"
+                                Command="{Binding SearchCommand}"
+                                CommandParameter="{Binding SearchText}">
+                            <avalonia:MaterialIcon Kind="ArrowRight" Width="20" Height="20"/>
+                        </Button>
+                    </TextBox.InnerRightContent>
+                </TextBox>
+            </DockPanel>
+
+            <!-- DataGrid 主列表 -->
+            <DataGrid Grid.Row="2"
+                      Margin="12,0,12,16"
+                      ItemsSource="{Binding Items}"
+                      CanUserResizeColumns="True"
+                      CanUserReorderColumns="False"
+                      GridLinesVisibility="None"
+                      BorderThickness="0"
+                      Background="Transparent"
+                      RowBackground="{DynamicResource MaterialCardBackgroundBrush}">
+
+                <DataGrid.Columns>
+                    <!-- 序號 -->
+                    <DataGridTextColumn Header="序號" 
+                                        Binding="{Binding Index}" 
+                                        Width="70" 
+                                        IsReadOnly="True"/>
+
+                    <!-- 模型名稱 -->
+                    <DataGridTextColumn Header="模型名稱" 
+                                        Binding="{Binding Name}" 
+                                        Width="*" 
+                                        IsReadOnly="True"/>
+
+                    <!-- 大小 -->
+                    <DataGridTextColumn Header="大小" 
+                                        Binding="{Binding SizeDisplay}" 
+                                        Width="140" 
+                                        IsReadOnly="True">
+                        <DataGridTextColumn.HeaderTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="大小" HorizontalAlignment="Right" FontWeight="SemiBold"/>
+                            </DataTemplate>
+                        </DataGridTextColumn.HeaderTemplate>
+                    </DataGridTextColumn>
+
+                    <!-- 建立時間 -->
+                    <DataGridTextColumn Header="建立時間" 
+                                        Binding="{Binding CreatedTimeDisplay}" 
+                                        Width="170" 
+                                        IsReadOnly="True"/>
+
+                    <!-- 狀態（互斥） -->
+                    <DataGridTemplateColumn Header="狀態" Width="120">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <ToggleSwitch IsChecked="{Binding IsEnabled, Mode=TwoWay}"
+                                              OffContent="已停用"
+                                              OnContent="已啟用"
+                                              Width="96"
+                                              Classes="Material"
+                                              HorizontalAlignment="Center"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+
+                    <!-- 操作 -->
+                    <DataGridTemplateColumn Header="操作" Width="100">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <Button Content="詳情"
+                                        Classes="flat"
+                                        HorizontalAlignment="Center"
+                                        Command="{Binding $parent[DataGrid].DataContext.ShowDetailsCommand}"
+                                        CommandParameter="{Binding}"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <!-- 載入中遮罩 -->
+            <Border Grid.Row="2"
+                    IsVisible="{Binding IsLoading}"
+                    Background="#80000000"
+                    CornerRadius="12">
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="16">
+                    <ProgressBar Width="200" IsIndeterminate="True"/>
+                    <TextBlock Text="正在載入模型列表..." 
+                               Foreground="White" 
+                               FontSize="15"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Border>
+</UserControl>

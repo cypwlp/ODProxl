@@ -1,0 +1,173 @@
+﻿<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:avalonia="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             mc:Ignorable="d"
+             d:DesignWidth="900"
+             d:DesignHeight="700"
+             x:Class="ODProxl.UserPreferencePage">
+
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                  VerticalScrollBarVisibility="Auto"
+                  Padding="24">
+        <StackPanel Spacing="32" MaxWidth="860" HorizontalAlignment="Stretch">
+
+            <!-- 頁面標題 -->
+            <StackPanel Spacing="8">
+                <TextBlock Text="用戶偏好設定"
+                           Classes="Headline4"
+                           FontWeight="SemiBold" />
+                <TextBlock Text="自訂你的帳戶、外觀與應用程式行為"
+                           Classes="Body1"
+                           Opacity="0.7" />
+            </StackPanel>
+
+            <!-- 通用設定卡片 -->
+            <Border Classes="Card" Padding="24" CornerRadius="12" BoxShadow="0 4 12 0 #1F000000">
+                <StackPanel Spacing="20">
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <avalonia:MaterialIcon Kind="AccountCircle"
+                                               Foreground="{DynamicResource PrimaryBrush}" />
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="通用" Classes="Headline6" />
+                            <TextBlock Text="帳戶與基本偏好" Classes="Body2" Opacity="0.7" />
+                        </StackPanel>
+                    </StackPanel>
+                    <Separator />
+                    <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto" Margin="0,8">
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="使用者帳號" VerticalAlignment="Center" />
+                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding CurrentUserAccount}"
+                                   Margin="24,0,0,0" VerticalAlignment="Center" Opacity="0.85" />
+                        <Button Grid.Row="0" Grid.Column="2" Content="修改"
+                                Theme="{DynamicResource MaterialOutlinedButton}" />
+
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="顯示名稱"
+                                   Margin="0,16,0,0" VerticalAlignment="Center" />
+                        <TextBox Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2"
+                                 Margin="24,16,0,0"
+                                 Text="{Binding DisplayName}"
+                                 Watermark="輸入顯示名稱" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- 外觀設定卡片 -->
+            <Border Classes="Card" Padding="24" CornerRadius="12" BoxShadow="0 4 12 0 #1F000000">
+                <StackPanel Spacing="20">
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <avalonia:MaterialIcon Kind="Palette"
+                                               Foreground="{DynamicResource PrimaryBrush}" />
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="外觀" Classes="Headline6" />
+                            <TextBlock Text="主題、顏色與語言" Classes="Body2" Opacity="0.7" />
+                        </StackPanel>
+                    </StackPanel>
+                    <Separator />
+                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" Margin="0,8">
+                        <TextBlock Grid.Row="0" Text="應用程式主題" VerticalAlignment="Center" />
+                        <ComboBox Grid.Row="0" Grid.Column="1" SelectedIndex="0" Width="180">
+                            <ComboBoxItem>跟隨系統</ComboBoxItem>
+                            <ComboBoxItem>淺色</ComboBoxItem>
+                            <ComboBoxItem>深色</ComboBoxItem>
+                        </ComboBox>
+
+                        <TextBlock Grid.Row="1" Text="語言" Margin="0,16,0,0" VerticalAlignment="Center" />
+                        <ComboBox Grid.Row="1" Grid.Column="1" Margin="0,16,0,0" Width="180">
+                            <ComboBoxItem>繁體中文 (香港)</ComboBoxItem>
+                            <ComboBoxItem>English</ComboBoxItem>
+                            <ComboBoxItem>简体中文</ComboBoxItem>
+                        </ComboBox>
+
+                        <TextBlock Grid.Row="2" Text="啟用平滑動畫" Margin="0,16,0,0" VerticalAlignment="Center" />
+                        <ToggleSwitch Grid.Row="2" Grid.Column="1" Margin="0,16,0,0" IsChecked="True" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- 通知與提醒卡片 -->
+            <Border Classes="Card" Padding="24" CornerRadius="12" BoxShadow="0 4 12 0 #1F000000">
+                <StackPanel Spacing="20">
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <avalonia:MaterialIcon Kind="Notifications"
+                                               Foreground="{DynamicResource PrimaryBrush}" />
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="通知" Classes="Headline6" />
+                            <TextBlock Text="接收更新與提醒" Classes="Body2" Opacity="0.7" />
+                        </StackPanel>
+                    </StackPanel>
+                    <Separator />
+                    <StackPanel Spacing="16">
+                        <CheckBox Content="啟用桌面通知" IsChecked="True" />
+                        <CheckBox Content="接收系統更新通知" IsChecked="True" />
+                        <CheckBox Content="顯示每日提示" IsChecked="False" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- 進階設定卡片 -->
+            <Border Classes="Card" Padding="24" CornerRadius="12" BoxShadow="0 4 12 0 #1F000000">
+                <StackPanel Spacing="20">
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <avalonia:MaterialIcon Kind="Settings"
+                                               Foreground="{DynamicResource PrimaryBrush}" />
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="進階" Classes="Headline6" />
+                            <TextBlock Text="效能與資料" Classes="Body2" Opacity="0.7" />
+                        </StackPanel>
+                    </StackPanel>
+                    <Separator />
+                    <StackPanel Spacing="16">
+                        <CheckBox Content="啟用診斷記錄" />
+                        <CheckBox Content="自動清除快取" IsChecked="True" />
+                        <Button Content="清除所有快取資料" HorizontalAlignment="Left"
+                                Theme="{DynamicResource MaterialOutlinedButton}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- 開發者設定卡片（使用 MVVM 控制顯示） -->
+            <Border Classes="Card" Padding="24" CornerRadius="12" BoxShadow="0 4 12 0 #1F000000"
+                    IsVisible="{Binding IsDeveloperMode}"
+                    x:Name="DeveloperCard">
+                <StackPanel Spacing="20">
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <avalonia:MaterialIcon Kind="CodeTags"
+                                               Width="32" Height="32"
+                                               Foreground="{DynamicResource ErrorBrush}" />
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="開發者設定"
+                                       Classes="Headline6"
+                                       Foreground="{DynamicResource ErrorBrush}" />
+                            <TextBlock Text="僅供開發與除錯使用，請勿在正式環境開啟"
+                                       Classes="Body2"
+                                       Opacity="0.7" />
+                        </StackPanel>
+                    </StackPanel>
+                    <Separator />
+                    <StackPanel Spacing="16">
+                        <CheckBox Content="啟用詳細日誌記錄 (Verbose Logging)"
+                                  IsChecked="{Binding EnableVerboseLogging}" />
+                        <CheckBox Content="啟用效能監測"
+                                  IsChecked="{Binding EnablePerformanceMonitoring}" />
+                        <CheckBox Content="顯示內部除錯資訊"
+                                  IsChecked="{Binding ShowDebugInfo}" />
+                        <CheckBox Content="繞過生產環境檢查"
+                                  IsChecked="{Binding BypassProductionChecks}" />
+
+                        <TextBlock Text="⚠️ 這些設定僅影響開發環境，正式版會自動忽略。"
+                                   FontSize="12" Opacity="0.6" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- 底部儲存按鈕 -->
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="12" Margin="0,16,0,0">
+                <Button Content="取消" Theme="{DynamicResource MaterialOutlinedButton}" />
+                <Button Content="儲存變更" Theme="{DynamicResource MaterialFilledButton}"
+                        Command="{Binding SaveCommand}" />
+            </StackPanel>
+
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>
