@@ -1,50 +1,50 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using ODProxl.EntityModels;
+using Prism.Dialogs;
+using Prism.Mvvm;
 using Velopack;
 
 namespace ODProxl.ViewModels.Dialogs
 {
     public class UpdateDialogViewModel : BindableBase, IDialogAware
     {
-        #region IDialogAware Implementation
-        public DialogCloseListener RequestClose { get; set; }
-        public bool CanCloseDialog()=>true;
-        public void OnDialogClosed(){}
-        public void OnDialogOpened(IDialogParameters parameters)
-        {
-            if (parameters.TryGetValue<UpdateInfo>("UpdateInfo", out var info))
-            {
-                UpdateInfo = info;
-            }
-        }
-        #endregion
-
-
-        #region 字段
         public string Title => "發現新版本";
-        private UpdateInfo? _updateInfo;
-        public string NewVersion => UpdateInfo?.TargetFullRelease?.Version.ToString() ?? "未知版本";
+
+        private string _newVersion = "未知版本";
+        public string NewVersion
+        {
+            get => _newVersion;
+            set => SetProperty(ref _newVersion, value);
+        }
+
+        public UpdateInfo? UpdateInfo { get; private set; }     // Velopack 用
+        public UpdateManifest? UpdateManifest { get; private set; } // CN 用
+
+        public DelegateCommand UpdateCommand { get; }
+        public DelegateCommand CancelCommand { get; }
+
         public UpdateDialogViewModel()
         {
             UpdateCommand = new DelegateCommand(() => RequestClose.Invoke(ButtonResult.OK));
             CancelCommand = new DelegateCommand(() => RequestClose.Invoke(ButtonResult.Cancel));
         }
 
-        #endregion
-
-
-        #region 屬性
-        public DelegateCommand? UpdateCommand { get; }
-        public DelegateCommand? CancelCommand { get; }
-        public UpdateInfo? UpdateInfo
+        public void OnDialogOpened(IDialogParameters parameters)
         {
-            get => _updateInfo;
-            set => SetProperty(ref _updateInfo, value);
+            if (parameters.TryGetValue<UpdateInfo>("UpdateInfo", out var info))
+            {
+                UpdateInfo = info;
+                NewVersion = info.TargetFullRelease?.Version?.ToString() ?? "未知版本";
+            }
+            else if (parameters.TryGetValue<string>("NewVersion", out var ver))
+            {
+                NewVersion = ver;
+            }
         }
-        #endregion
 
+        #region IDialogAware
+        public DialogCloseListener RequestClose { get; set; }
+        public bool CanCloseDialog() => true;
+        public void OnDialogClosed() { }
+        #endregion
     }
 }

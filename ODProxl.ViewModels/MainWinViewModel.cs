@@ -100,7 +100,7 @@ namespace ODProxl.ViewModels
                 new LeftMenuItem { Icon = MaterialIconKind.Cog, Title = "檢測设置", ViewName = "Settings", LimitUserName = ["AllUser"], Command = new DelegateCommand(async () => await NavigateAsync("Settings")) },
                 new LeftMenuItem { Icon = MaterialIconKind.Information, Title = "關於", ViewName = "AboutDialog", LimitUserName = ["AllUser"], Command = new DelegateCommand(async () => await NavigateAsync("AboutDialog")) },
                 new LeftMenuItem { Icon = MaterialIconKind.LogoutVariant, Title = "退出登录", ViewName = null, LimitUserName = ["AllUser"], Command = new DelegateCommand(OnLogout) },
-                new LeftMenuItem { Icon = MaterialIconKind.CodeGreaterThanOrEqual, Title = "程序信息", ViewName = "UploadDialog", LimitUserName = ["L5940","L5126","1817"], Command = new DelegateCommand(async () => await ShowDialogAsync("UploadDialog")) }
+                new LeftMenuItem { Icon = MaterialIconKind.CodeGreaterThanOrEqual, Title = "程序信息", ViewName = "UploadDialog", LimitUserName = ["L5940","L5126","1817"], Command = new DelegateCommand(async () => await ShowDialogAsync("UploadDialog", new DialogParameters { { "LoginInfo", LoginInfo } })) }
             };
 
             RebuildFlyoutMenuItems();   // 建立真正的 MenuItem 集合

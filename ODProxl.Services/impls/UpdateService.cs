@@ -1,8 +1,15 @@
 ﻿using Avalonia;
+using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Threading;
-using DryIoc;
 using ODProxl.EntityModels;
+using ODProxl.Utils;
 using Prism.Dialogs;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Net.Http;
+using System.Security.Cryptography;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Velopack;
@@ -14,115 +21,29 @@ namespace ODProxl.Services.impls
     {
         private readonly IDialogService _dialogService;
 
-        // DryIoc 會自動注入 IDialogService
         public UpdateService(IDialogService dialogService)
         {
             _dialogService = dialogService;
         }
 
-        private string GetLocalVersion()
-        {
-            return "1.0.0";
-        }
-
-
-        private bool VerifyHash(string localPath, string expectedHash)
-        {
-            return true;
-
-        }
-
-        private async Task DownloadFilesAsync()
-        {
-
-        }
-        private async Task<UpdateManifest> FetchManifestAsync(string baseUrl)
-        {
-            string manifestUrl = baseUrl.TrimEnd('/') + "/manifest.json";
-            using var client = new HttpClient();
-            // 设置超时，避免长时间阻塞
-            client.Timeout = TimeSpan.FromSeconds(10);
-
-            try
-            {
-                var response = await client.GetAsync(manifestUrl);
-                response.EnsureSuccessStatusCode();
-
-                string json = await response.Content.ReadAsStringAsync();
-                var manifest = JsonSerializer.Deserialize<UpdateManifest>(json);
-                return manifest;
-            }
-            catch (Exception ex)
-            {
-                // 处理网络异常、JSON 解析失败等，可根据需要抛出或返回 null
-                throw new InvalidOperationException($"无法获取更新清单：{ex.Message}", ex);
-            }
-        }
         public async Task UpdateODProxlAsync(string countryCode)
         {
             if (countryCode == "CN")
             {
-                string baseUrl = "http://129.204.149.106:8080/ODProxl/";
-                string localAppPath = AppContext.BaseDirectory;
-                string tempUpdatePath = Path.Combine(Path.GetTempPath(), "ODProxl_Update_" + Guid.NewGuid());
-
-                try
-                {
-                    // 获取远程清单
-                    var manifest = await FetchManifestAsync(baseUrl);
-                    var localVersion = GetLocalVersion(); // 你需要实现这个方法
-
-                    // 如果版本相同，可以跳过更新（但也可以按文件比对，这里简化）
-                    if (manifest.Version == localVersion)
-                        return;
-
-                    // 比对文件差异
-                    var filesToUpdate = new List<UpdateFile>();
-                    foreach (var file in manifest.Files)
-                    {
-                        string localPath = Path.Combine(localAppPath, file.Path);
-                        if (!File.Exists(localPath) || !VerifyHash(localPath, file.Hash))
-                        {
-                            filesToUpdate.Add(file);
-                        }
-                    }
-
-                    if (!filesToUpdate.Any()) return;
-
-                    // 弹出确认对话框...
-                    var result = await _dialogService.ShowDialogAsync("UpdateDialog");
-                    // 下载文件...
-
-                    // 启动更新程序...
-                }
-                catch (Exception ex)
-                {
-                    // 错误处理
-         
-                }
+                await UpdateForChinaAsync();
             }
-
             else
             {
-                // Velopack (國際版)
+                // 國際版 Velopack
                 var source = new GithubSource("https://github.com/cypwlp/ODProxl.git", "", false);
                 var mgr = new UpdateManager(source);
                 var updateInfo = await mgr.CheckForUpdatesAsync();
-
-                if (updateInfo == null)
-                {
-                    return;
-                }
+                if (updateInfo == null) return;
 
                 await Dispatcher.UIThread.InvokeAsync(async () =>
                 {
-                    var parameters = new DialogParameters
-                    {
-                    { "UpdateInfo", updateInfo }
-                    };
-
+                    var parameters = new DialogParameters { { "UpdateInfo", updateInfo } };
                     var result = await _dialogService.ShowDialogAsync("UpdateDialog", parameters);
-
                     if (result?.Result == ButtonResult.OK)
                     {
                         await mgr.DownloadUpdatesAsync(updateInfo);
@@ -132,6 +53,125 @@ namespace ODProxl.Services.impls
             }
         }
 
+        private async Task UpdateForChinaAsync()
+        {
+            string rid = PlatformHelper.GetCurrentRid();
+            string baseUrl = $"http://129.204.149.106:8080/ODProxl/{rid}/";
+            string localAppPath = AppContext.BaseDirectory;
 
+            try
+            {
+                var manifest = await FetchManifestAsync(baseUrl);
+                if (manifest?.Version == GetLocalVersion()) return;
+
+                var filesToUpdate = GetFilesNeedUpdate(manifest!, localAppPath);
+                if (filesToUpdate.Count == 0) return;
+
+                var parameters = new DialogParameters
+                {
+                    { "NewVersion", manifest!.Version },
+                    { "UpdateManifest", manifest },
+                    { "Description", manifest.Description }
+                };
+
+                var result = await _dialogService.ShowDialogAsync("UpdateDialog", parameters);
+
+                if (result?.Result == ButtonResult.OK)
+                {
+                    await DownloadAndApplyUpdatesAsync(filesToUpdate, baseUrl, localAppPath);
+                    RestartApplication();
+                }
+            }
+            catch (Exception ex)
+            {
+                // TODO: 可加入日誌或 Toast 提示
+                Console.WriteLine($"CN 更新檢查失敗：{ex.Message}");
+            }
+        }
+
+        private async Task<UpdateManifest?> FetchManifestAsync(string baseUrl)
+        {
+            string manifestUrl = baseUrl.TrimEnd('/') + "/manifest.json";
+            using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+            var response = await client.GetAsync(manifestUrl);
+            response.EnsureSuccessStatusCode();
+            string json = await response.Content.ReadAsStringAsync();
+            return JsonSerializer.Deserialize<UpdateManifest>(json);
+        }
+
+        private string GetLocalVersion()
+        {
+            // 可改成讀取 AssemblyVersion 或本地檔案，這裡先簡單寫死（實際專案建議改成動態）
+            return "1.0.0";
+        }
+
+        private bool VerifyHash(string localPath, string expectedHash)
+        {
+            if (!File.Exists(localPath) || string.IsNullOrEmpty(expectedHash)) return false;
+            using var sha = SHA256.Create();
+            using var fs = File.OpenRead(localPath);
+            var hash = BitConverter.ToString(sha.ComputeHash(fs)).Replace("-", "").ToLower();
+            return hash == expectedHash;
+        }
+
+        private List<UpdateFile> GetFilesNeedUpdate(UpdateManifest manifest, string localAppPath)
+        {
+            var list = new List<UpdateFile>();
+            foreach (var file in manifest.Files)
+            {
+                string localPath = Path.Combine(localAppPath, file.Path ?? "");
+                if (!File.Exists(localPath) || !VerifyHash(localPath, file.Hash ?? ""))
+                {
+                    list.Add(file);
+                }
+            }
+            return list;
+        }
+
+        private async Task DownloadAndApplyUpdatesAsync(List<UpdateFile> filesToUpdate, string baseUrl, string localAppPath)
+        {
+            using var client = new HttpClient();
+            var tempDir = Path.Combine(Path.GetTempPath(), "ODProxl_Update_" + Guid.NewGuid());
+            Directory.CreateDirectory(tempDir);
+
+            foreach (var file in filesToUpdate)
+            {
+                string downloadUrl = baseUrl.TrimEnd('/') + "/" + (file.Path ?? "").Replace("\\", "/");
+                string localTempPath = Path.Combine(tempDir, file.Path ?? "");
+
+                Directory.CreateDirectory(Path.GetDirectoryName(localTempPath)!);
+                var bytes = await client.GetByteArrayAsync(downloadUrl);
+                await File.WriteAllBytesAsync(localTempPath, bytes);
+            }
+
+            // 覆蓋本地檔案
+            foreach (var file in filesToUpdate)
+            {
+                string source = Path.Combine(tempDir, file.Path ?? "");
+                string dest = Path.Combine(localAppPath, file.Path ?? "");
+                Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
+                File.Copy(source, dest, true);
+            }
+              
+            Directory.Delete(tempDir, true);
+        }
+
+        private void RestartApplication()
+        {
+            var currentProcess = Process.GetCurrentProcess();
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = currentProcess.MainModule?.FileName,
+                UseShellExecute = true,
+                Arguments = string.Join(" ", Environment.GetCommandLineArgs().Skip(1))
+            };
+
+            if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime lifetime)
+            {
+                lifetime.Shutdown();
+            }
+            Process.Start(startInfo);
+            Environment.Exit(0);
+        }
     }
 }

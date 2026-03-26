@@ -1,0 +1,145 @@
+name: Publish Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jODProxls:
+  publish:
+    name: Publish for ${{ matrix.os }} (${{ matrix.rid }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            rid: win-x64
+            executable: ODProxl.exe
+          - os: macos-15-intel                 # Intel x64
+            rid: osx-x64
+            executable: ODProxl
+          - os: macos-latest             # Apple Silicon ARM64
+            rid: osx-arm64
+            executable: ODProxl
+          - os: ubuntu-22.04
+            rid: linux-x64
+            executable: ODProxl
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Install Velopack CLI
+        run: dotnet tool install -g vpk
+
+      - name: Install Linux Dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libfuse2 desktop-file-utils libglib2.0-bin
+
+      # 平台專屬圖示轉換，並設定環境變數供後續步驟使用
+      - name: Prepare Icon and Platform Flags
+        id: prepare
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            choco install imagemagick -y
+            magick convert ./Assets/app-icon.png -define icon:auto-resize=256,128,64,48,32,16 ./Assets/app-icon.ico
+            echo "ICON=./Assets/app-icon.ico" >> $GITHUB_ENV
+            echo "BUNDLE_ID=" >> $GITHUB_ENV
+          elif [ "$RUNNER_OS" == "macOS" ]; then
+            mkdir -p AppIcon.iconset
+            sips -z 16 16     Assets/app-icon.png --out AppIcon.iconset/icon_16x16.png
+            sips -z 32 32     Assets/app-icon.png --out AppIcon.iconset/icon_16x16@2x.png
+            sips -z 32 32     Assets/app-icon.png --out AppIcon.iconset/icon_32x32.png
+            sips -z 64 64     Assets/app-icon.png --out AppIcon.iconset/icon_32x32@2x.png
+            sips -z 128 128   Assets/app-icon.png --out AppIcon.iconset/icon_128x128.png
+            sips -z 256 256   Assets/app-icon.png --out AppIcon.iconset/icon_128x128@2x.png
+            sips -z 256 256   Assets/app-icon.png --out AppIcon.iconset/icon_256x256.png
+            sips -z 512 512   Assets/app-icon.png --out AppIcon.iconset/icon_256x256@2x.png
+            sips -z 512 512   Assets/app-icon.png --out AppIcon.iconset/icon_512x512.png
+            sips -z 1024 1024 Assets/app-icon.png --out AppIcon.iconset/icon_512x512@2x.png
+            iconutil -c icns AppIcon.iconset -o Assets/app-icon.icns
+            echo "ICON=./Assets/app-icon.icns" >> $GITHUB_ENV
+            echo "BUNDLE_ID=--bundleId com.cypilu.ODProxl" >> $GITHUB_ENV
+          else  # Linux
+            echo "ICON=./Assets/app-icon.png" >> $GITHUB_ENV
+            echo "BUNDLE_ID=" >> $GITHUB_ENV
+          fi
+
+      - name: Publish Application
+        run: dotnet publish -c Release --runtime ${{ matrix.rid }} --self-contained true -o ./publish
+
+      - name: Sync Previous Releases (Delta Updates)
+        continue-on-error: true
+        run: |
+          vpk download github --repoUrl https://github.com/${{ github.repository }} --outputDir ./Releases
+
+      - name: Velopack Pack
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          vpk pack \
+            --packId "ODProxl" \
+            --packVersion "$VERSION" \
+            --packDir "./publish" \
+            --mainExe "${{ matrix.executable }}" \
+            --icon "${{ env.ICON }}" \
+            ${{ env.BUNDLE_ID }} \
+            --outputDir "./Releases"
+
+      # macOS 的 Velopack 預設使用 "osx" 作為架構標籤，這裡改為正確的 RID
+      - name: Rename macOS Artifacts
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          cd ./Releases
+          
+          # Rename the main artifacts with correct RID (nupkg, delta, etc.)
+          for f in ODProxl-*-osx-*; do
+            if [ -f "$f" ]; then
+              newname=$(echo "$f" | sed "s/-osx-/-${{ matrix.rid }}-/")
+              mv "$f" "$newname"
+            fi
+          done
+          
+          # Rename RELEASES and json files
+          [ -f "RELEASES-osx" ] && mv "RELEASES-osx" "RELEASES-${{ matrix.rid }}"
+          [ -f "releases.osx.json" ] && mv "releases.osx.json" "releases.${{ matrix.rid }}.json"
+          
+          # Rename Portable.zip and Setup.pkg to include the RID
+          [ -f "ODProxl-osx-Portable.zip" ] && mv "ODProxl-osx-Portable.zip" "ODProxl-${{ matrix.rid }}-Portable.zip"
+          [ -f "ODProxl-osx-Setup.pkg" ] && mv "ODProxl-osx-Setup.pkg" "ODProxl-${{ matrix.rid }}-Setup.pkg"
+          
+          cd ..
+
+      - name: List Release Directory
+        run: ls -la ./Releases
+        shell: bash
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            ./Releases/*.exe
+            ./Releases/*.nupkg
+            ./Releases/*.pkg
+            ./Releases/*.zip
+            ./Releases/*.AppImage
+            ./Releases/RELEASES*
+            ./Releases/releases.*.json
+          tag_name: ${{ github.ref_name }}
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

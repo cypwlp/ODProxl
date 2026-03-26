@@ -39,6 +39,7 @@ namespace ODProxl
             containerRegistry.Register<IGeoLocationService, GeoLocationService>();
             containerRegistry.Register<IDialogService, DialogService>();
             containerRegistry.Register<IUpdateService, UpdateService>();
+            containerRegistry.Register<IUploadService, UploadService>();
         }
 
         private async Task CheckForUpdatesAsync()
