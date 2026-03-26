@@ -201,9 +201,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y davfs2
 
-          # 配置 davfs2
-          echo "user_allow_other" | sudo tee -a /etc/davfs2/davfs2.conf
-          echo "$WEBDAV_URL $WEBDAV_USER $WEBDAV_PASS" | sudo tee -a /etc/davfs2/secrets
+          # 配置 WebDAV 凭据
+          echo "$WEBDAV_URL $WEBDAV_USER $WEBDAV_PASS" | sudo tee /etc/davfs2/secrets
           sudo chmod 600 /etc/davfs2/secrets
 
           mkdir -p /tmp/webdav_mount
