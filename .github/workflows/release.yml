@@ -153,7 +153,7 @@ jobs:
           path: ./Releases
           if-no-files-found: error
 
-  # 同步所有平台产物到国内 WebDAV 服务器（使用 davfs2 + rsync 实现增量同步）
+  # 同步所有平台产物到国内 WebDAV 服务器（使用 rclone 实现稳定同步）
   sync-to-china:
     name: Sync to China Server (WebDAV)
     needs: publish
@@ -176,39 +176,31 @@ jobs:
           done
           ls -la ./merged_releases
 
-      - name: Sync via WebDAV (davfs2 + rsync)
+      - name: Sync via WebDAV (rclone)
         env:
           WEBDAV_URL: ${{ secrets.WEBDAV_BASE_URL }}
           WEBDAV_USER: ${{ secrets.SERVER_USER }}
           WEBDAV_PASS: ${{ secrets.SERVER_PASSWORD }}
         run: |
-          # 检查环境变量是否为空
-          if [ -z "$WEBDAV_URL" ]; then
-            echo "ERROR: WEBDAV_URL is empty. Please set WEBDAV_BASE_URL secret."
-            exit 1
-          fi
-          if [ -z "$WEBDAV_USER" ]; then
-            echo "ERROR: WEBDAV_USER is empty. Please set SERVER_USER secret."
-            exit 1
-          fi
-          if [ -z "$WEBDAV_PASS" ]; then
-            echo "ERROR: WEBDAV_PASS is empty. Please set SERVER_PASSWORD secret."
+          # 检查环境变量
+          if [ -z "$WEBDAV_URL" ] || [ -z "$WEBDAV_USER" ] || [ -z "$WEBDAV_PASS" ]; then
+            echo "ERROR: WebDAV credentials not set."
             exit 1
           fi
 
-          echo "WebDAV URL: $WEBDAV_URL"
+          # 安装 rclone
+          curl -fsSL https://rclone.org/install.sh | sudo bash
 
-          sudo apt-get update
-          sudo apt-get install -y davfs2
+          # 配置 rclone
+          mkdir -p ~/.config/rclone
+          cat > ~/.config/rclone/rclone.conf <<EOF
+          [webdav]
+          type = webdav
+          url = $WEBDAV_URL
+          vendor = other
+          user = $WEBDAV_USER
+          pass = $(rclone obscure "$WEBDAV_PASS")
+          EOF
 
-          # 配置 WebDAV 凭据
-          echo "$WEBDAV_URL $WEBDAV_USER $WEBDAV_PASS" | sudo tee /etc/davfs2/secrets
-          sudo chmod 600 /etc/davfs2/secrets
-
-          mkdir -p /tmp/webdav_mount
-          # 挂载 WebDAV，指定 uid/gid 为当前用户，以便后续 rsync 有写入权限
-          sudo mount -t davfs "$WEBDAV_URL" /tmp/webdav_mount -o uid=$(id -u),gid=$(id -g)
-          # 增量同步文件
-          rsync -avz --progress ./merged_releases/ /tmp/webdav_mount/
-          # 卸载
-          sudo umount /tmp/webdav_mount
+          # 同步文件（自动重试，支持断点续传）
+          rclone sync ./merged_releases webdav:/ --progress --retries 5 --low-level-retries 10 --transfers 4 --checksum

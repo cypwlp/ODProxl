@@ -4,5 +4,5 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="ODProxl.HomePage">
-  Welcome to Avalonia!1.0.8版本！@
+  Welcome to Avalonia!2.0.1版本！@
 </UserControl>
