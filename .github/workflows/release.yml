@@ -7,6 +7,8 @@ on:
 
 jobs:
   publish:
+    # 仅当推送的是 tag 时才执行（双重保障）
+    if: startsWith(github.ref, 'refs/tags/v')
     name: Publish for ${{ matrix.os }} (${{ matrix.rid }})
     runs-on: ${{ matrix.os }}
     strategy:
@@ -18,7 +20,7 @@ jobs:
           - os: macos-15-intel                 # Intel x64
             rid: osx-x64
             executable: ODProxl
-          - os: macos-latest             # Apple Silicon ARM64
+          - os: macos-latest                   # Apple Silicon ARM64
             rid: osx-arm64
             executable: ODProxl
           - os: ubuntu-22.04
@@ -152,7 +154,7 @@ jobs:
           if-no-files-found: error
 
   # 同步所有平台产物到国内 WebDAV 服务器（使用 davfs2 + rsync 实现增量同步）
-    sync-to-china:
+  sync-to-china:
     name: Sync to China Server (WebDAV)
     needs: publish
     runs-on: ubuntu-latest
