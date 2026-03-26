@@ -11,6 +11,7 @@ namespace ODProxl.ViewModels.Dialogs
     public class LoginDialogViewModel: BindableBase,IDialogAware
     {
         #region IDialogAware Implementation
+        public string Title => "登入系統";
         public DialogCloseListener RequestClose { get; private set; }
         public bool CanCloseDialog() => true;
         public void OnDialogClosed() { }

@@ -55,6 +55,7 @@ namespace ODProxl.ViewModels.Dialogs
         }
 
         #region IDialogAware
+        public string Title => "上傳新版本";
         public DialogCloseListener RequestClose { get; set; }
         public bool CanCloseDialog() => true;
         public void OnDialogClosed() { }
