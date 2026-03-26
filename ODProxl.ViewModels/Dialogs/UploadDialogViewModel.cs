@@ -51,7 +51,7 @@ namespace ODProxl.ViewModels.Dialogs
             {
                 // TODO: 顯示錯誤提示（可使用 MessageBox）
                 Console.WriteLine($"上傳失敗：{ex.Message}");
-            }
+            }  
         }
 
         #region IDialogAware
