@@ -152,7 +152,7 @@ jobs:
           if-no-files-found: error
 
   # 同步所有平台产物到国内 WebDAV 服务器（使用 davfs2 + rsync 实现增量同步）
-  sync-to-china:
+    sync-to-china:
     name: Sync to China Server (WebDAV)
     needs: publish
     runs-on: ubuntu-latest
@@ -174,26 +174,40 @@ jobs:
           done
           ls -la ./merged_releases
 
-      - name: Install davfs2 and configure
+      - name: Sync via WebDAV (davfs2 + rsync)
         env:
           WEBDAV_URL: ${{ secrets.WEBDAV_BASE_URL }}
           WEBDAV_USER: ${{ secrets.SERVER_USER }}
           WEBDAV_PASS: ${{ secrets.SERVER_PASSWORD }}
         run: |
+          # 检查环境变量是否为空
+          if [ -z "$WEBDAV_URL" ]; then
+            echo "ERROR: WEBDAV_URL is empty. Please set WEBDAV_BASE_URL secret."
+            exit 1
+          fi
+          if [ -z "$WEBDAV_USER" ]; then
+            echo "ERROR: WEBDAV_USER is empty. Please set SERVER_USER secret."
+            exit 1
+          fi
+          if [ -z "$WEBDAV_PASS" ]; then
+            echo "ERROR: WEBDAV_PASS is empty. Please set SERVER_PASSWORD secret."
+            exit 1
+          fi
+
+          echo "WebDAV URL: $WEBDAV_URL"
+
           sudo apt-get update
           sudo apt-get install -y davfs2
-          # 允许非 root 用户挂载
+
+          # 配置 davfs2
           echo "user_allow_other" | sudo tee -a /etc/davfs2/davfs2.conf
-          # 配置认证信息
           echo "$WEBDAV_URL $WEBDAV_USER $WEBDAV_PASS" | sudo tee -a /etc/davfs2/secrets
           sudo chmod 600 /etc/davfs2/secrets
 
-      - name: Mount WebDAV and sync
-        run: |
           mkdir -p /tmp/webdav_mount
-          # 挂载 WebDAV 到本地目录（使用当前用户权限）
+          # 挂载 WebDAV，指定 uid/gid 为当前用户，以便后续 rsync 有写入权限
           sudo mount -t davfs "$WEBDAV_URL" /tmp/webdav_mount -o uid=$(id -u),gid=$(id -g)
-          # 使用 rsync 进行增量同步（只传输变化的文件和块）
+          # 增量同步文件
           rsync -avz --progress ./merged_releases/ /tmp/webdav_mount/
           # 卸载
           sudo umount /tmp/webdav_mount
