@@ -50,33 +50,32 @@ jobs:
 
       # 平台專屬圖示轉換，並設定環境變數供後續步驟使用
       - name: Prepare Icon and Platform Flags
-        id: prepare
-        shell: bash
-        run: |
-          if [ "$RUNNER_OS" == "Windows" ]; then
-            choco install imagemagick -y
-            magick convert ./Assets/app-icon.png -define icon:auto-resize=256,128,64,48,32,16 ./Assets/app-icon.ico
-            echo "ICON=./Assets/app-icon.ico" >> $GITHUB_ENV
-            echo "BUNDLE_ID=" >> $GITHUB_ENV
-          elif [ "$RUNNER_OS" == "macOS" ]; then
-            mkdir -p AppIcon.iconset
-            sips -z 16 16     Assets/app-icon.png --out AppIcon.iconset/icon_16x16.png
-            sips -z 32 32     Assets/app-icon.png --out AppIcon.iconset/icon_16x16@2x.png
-            sips -z 32 32     Assets/app-icon.png --out AppIcon.iconset/icon_32x32.png
-            sips -z 64 64     Assets/app-icon.png --out AppIcon.iconset/icon_32x32@2x.png
-            sips -z 128 128   Assets/app-icon.png --out AppIcon.iconset/icon_128x128.png
-            sips -z 256 256   Assets/app-icon.png --out AppIcon.iconset/icon_128x128@2x.png
-            sips -z 256 256   Assets/app-icon.png --out AppIcon.iconset/icon_256x256.png
-            sips -z 512 512   Assets/app-icon.png --out AppIcon.iconset/icon_256x256@2x.png
-            sips -z 512 512   Assets/app-icon.png --out AppIcon.iconset/icon_512x512.png
-            sips -z 1024 1024 Assets/app-icon.png --out AppIcon.iconset/icon_512x512@2x.png
-            iconutil -c icns AppIcon.iconset -o Assets/app-icon.icns
-            echo "ICON=./Assets/app-icon.icns" >> $GITHUB_ENV
-            echo "BUNDLE_ID=--bundleId com.cypilu.ODProxl" >> $GITHUB_ENV
-          else  # Linux
-            echo "ICON=./Assets/app-icon.png" >> $GITHUB_ENV
-            echo "BUNDLE_ID=" >> $GITHUB_ENV
-          fi
+  shell: bash
+  run: |
+    if [ "$RUNNER_OS" == "Windows" ]; then
+      choco install imagemagick -y
+      magick convert ./ODProxl/Assets/app-icon.png -define icon:auto-resize=256,128,64,48,32,16 ./ODProxl/Assets/app-icon.ico
+      echo "ICON=./ODProxl/Assets/app-icon.ico" >> $GITHUB_ENV
+      echo "BUNDLE_ID=" >> $GITHUB_ENV
+    elif [ "$RUNNER_OS" == "macOS" ]; then
+      mkdir -p AppIcon.iconset
+      sips -z 16 16     ODProxl/Assets/app-icon.png --out AppIcon.iconset/icon_16x16.png
+      sips -z 32 32     ODProxl/Assets/app-icon.png --out AppIcon.iconset/icon_16x16@2x.png
+      sips -z 32 32     ODProxl/Assets/app-icon.png --out AppIcon.iconset/icon_32x32.png
+      sips -z 64 64     ODProxl/Assets/app-icon.png --out AppIcon.iconset/icon_32x32@2x.png
+      sips -z 128 128   ODProxl/Assets/app-icon.png --out AppIcon.iconset/icon_128x128.png
+      sips -z 256 256   ODProxl/Assets/app-icon.png --out AppIcon.iconset/icon_128x128@2x.png
+      sips -z 256 256   ODProxl/Assets/app-icon.png --out AppIcon.iconset/icon_256x256.png
+      sips -z 512 512   ODProxl/Assets/app-icon.png --out AppIcon.iconset/icon_256x256@2x.png
+      sips -z 512 512   ODProxl/Assets/app-icon.png --out AppIcon.iconset/icon_512x512.png
+      sips -z 1024 1024 ODProxl/Assets/app-icon.png --out AppIcon.iconset/icon_512x512@2x.png
+      iconutil -c icns AppIcon.iconset -o ODProxl/Assets/app-icon.icns
+      echo "ICON=./ODProxl/Assets/app-icon.icns" >> $GITHUB_ENV
+      echo "BUNDLE_ID=--bundleId com.cypilu.ODProxl" >> $GITHUB_ENV
+    else  # Linux
+      echo "ICON=./ODProxl/Assets/app-icon.png" >> $GITHUB_ENV
+      echo "BUNDLE_ID=" >> $GITHUB_ENV
+    fi
 
       - name: Publish Application
         run: dotnet publish -c Release --runtime ${{ matrix.rid }} --self-contained true -o ./publish
