@@ -142,3 +142,46 @@ jobs:
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Upload artifact for later merging
+      - name: Upload Artifact (Releases)
+        uses: actions/upload-artifact@v4
+        with:
+          name: releases-${{ matrix.rid }}
+          path: ./Releases
+          if-no-files-found: error
+
+  # New job: sync all platforms to China server
+  sync-to-china:
+    name: Sync to China Server
+    needs: publish
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./all_releases
+
+      - name: Merge Releases
+        run: |
+          mkdir -p ./merged_releases
+          # Each artifact is in a subdirectory named releases-<rid>
+          for rid_dir in ./all_releases/releases-*; do
+            if [ -d "$rid_dir" ]; then
+              echo "Copying $rid_dir to ./merged_releases"
+              cp -r "$rid_dir"/* ./merged_releases/
+            fi
+          done
+          ls -la ./merged_releases
+
+      - name: Sync to China Server via rsync (with password)
+        env:
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_PATH: ${{ secrets.SERVER_PATH }}
+          SERVER_PASSWORD: ${{ secrets.SERVER_PASSWORD }}
+        run: |
+          sudo apt-get update && sudo apt-get install -y sshpass
+          sshpass -p "$SERVER_PASSWORD" rsync -avz --progress \
+            -e "ssh -o StrictHostKeyChecking=no" \
+            ./merged_releases/ $SERVER_USER@$SERVER_HOST:$SERVER_PATH/
