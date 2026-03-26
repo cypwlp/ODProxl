@@ -201,19 +201,16 @@ jobs:
           pass = $(rclone obscure "$WEBDAV_PASS")
           EOF
 
-          # 優化後的 sync 指令（提升傳輸速度）
+          # 優化後的 sync 指令（修正版：移除不支持的參數）
           rclone sync ./merged_releases webdav:/ \
             --progress \
             --transfers 12 \
             --checkers 24 \
             --multi-thread-streams 4 \
-            --buffer-size 64M \
-            --vfs-read-chunk-size 64M \
             --timeout 10m \
             --contimeout 2m \
             --retries 10 \
             --low-level-retries 20 \
             --retries-sleep 15s \
-            --no-checksum \
-            --fast-list \
-            --size-only
+            --size-only \
+            --fast-list
