@@ -4,39 +4,20 @@ using System;
 using System.Net;
 using System.Net.Http;
 using System.Runtime.InteropServices;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Velopack;
 using Velopack.Sources;
 
 namespace ODProxl.Services.impls
 {
-    /// <summary>
-    /// 自訂的 HttpClientFileDownloader，用來支援 WebDAV Basic Authentication
-    /// </summary>
-    //public class WebDavFileDownloader : HttpClientFileDownloader
-    //{
-    //    private readonly string _username;
-    //    private readonly string _password;
-
-    //    public WebDavFileDownloader(string username, string password)
-    //    {
-    //        _username = username;
-    //        _password = password;
-    //    }
-
-    //    protected override HttpClientHandler CreateHttpClientHandler()
-    //    {
-    //        return new HttpClientHandler
-    //        {
-    //            Credentials = new NetworkCredential(_username, _password),
-    //            PreAuthenticate = true
-    //        };
-    //    }
-    //}
-
     public class UpdateService : IUpdateService
     {
         private readonly IDialogService _dialogService;
+        private static readonly HttpClient _httpClient = new HttpClient
+        {
+            Timeout = TimeSpan.FromSeconds(10)
+        };
 
         public UpdateService(IDialogService dialogService)
         {
@@ -54,20 +35,22 @@ namespace ODProxl.Services.impls
 
             if (countryCode == "CN")
             {
-                // ==================== 國內更新（WebDAV）====================
+                // ==================== 國內更新（WebDAV - 每個版本獨立資料夾）====================
                 try
                 {
                     string rid = RuntimeInformation.RuntimeIdentifier;
 
-                    // ========== 請替換為實際的 WebDAV 帳號密碼 ==========
-                    //string username = "WebUser";
-                    //string password = "2549979631Wei@";
-                    //// ====================================================
-                    
-                    //// 使用自訂的 Downloader 支援 WebDAV 認證
-                    //var downloader = new WebDavFileDownloader(username, password);
+                    // 1. 從 GitHub 取得最新版本號（公開 API，無需 Token）
+                    string latestVersion = await GetLatestVersionFromGitHubAsync();
+                    if (string.IsNullOrEmpty(latestVersion))
+                    {
+                        Console.WriteLine("[Velopack CN] 無法取得最新版本號");
+                        return;
+                    }
 
-                    var source = new SimpleWebSource("http://interior.topmix.net/info/system/software/ODProxl/");
+                    // 2. 指向對應的版本子資料夾
+                    string baseUrl = $"http://interior.topmix.net/info/system/software/ODProxl/{latestVersion}/";
+                    var source = new SimpleWebSource(baseUrl);
 
                     var options = new UpdateOptions
                     {
@@ -75,7 +58,6 @@ namespace ODProxl.Services.impls
                     };
 
                     var mgr = new UpdateManager(source, options);
-
                     var updateInfo = await mgr.CheckForUpdatesAsync();
 
                     if (updateInfo == null)
@@ -90,7 +72,6 @@ namespace ODProxl.Services.impls
                     {
                         var parameters = new DialogParameters { { "UpdateInfo", updateInfo } };
                         var result = await _dialogService.ShowDialogAsync("UpdateDialog", parameters);
-
                         if (result?.Result == ButtonResult.OK)
                         {
                             await mgr.DownloadUpdatesAsync(updateInfo);
@@ -110,7 +91,6 @@ namespace ODProxl.Services.impls
                 {
                     var source = new GithubSource("https://github.com/cypwlp/ODProxl", "", false);
                     var mgr = new UpdateManager(source);
-
                     var updateInfo = await mgr.CheckForUpdatesAsync();
 
                     if (updateInfo == null)
@@ -125,7 +105,6 @@ namespace ODProxl.Services.impls
                     {
                         var parameters = new DialogParameters { { "UpdateInfo", updateInfo } };
                         var result = await _dialogService.ShowDialogAsync("UpdateDialog", parameters);
-
                         if (result?.Result == ButtonResult.OK)
                         {
                             await mgr.DownloadUpdatesAsync(updateInfo);
@@ -138,6 +117,33 @@ namespace ODProxl.Services.impls
                     Console.WriteLine($"[Velopack GitHub] 更新檢查失敗：{ex.Message}");
                 }
             }
+        }
+
+        /// <summary>
+        /// 從 GitHub 公開 API 取得最新 Release 的版本號（去掉 v）
+        /// </summary>
+        private static async Task<string> GetLatestVersionFromGitHubAsync()
+        {
+            try
+            {
+                var response = await _httpClient.GetAsync("https://api.github.com/repos/cypwlp/ODProxl/releases/latest");
+                response.EnsureSuccessStatusCode();
+
+                var json = await response.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(json);
+                var root = doc.RootElement;
+
+                if (root.TryGetProperty("tag_name", out var tagElement))
+                {
+                    string tag = tagElement.GetString() ?? "";
+                    return tag.StartsWith("v") ? tag.Substring(1) : tag;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[GetLatestVersion] 取得 GitHub 最新版本失敗：{ex.Message}");
+            }
+            return string.Empty;
         }
     }
 }

@@ -122,7 +122,7 @@ namespace ODProxl.ViewModels.Dialogs
                 // 使用執行中的組件版本（推薦方式，不依賴特定類別名稱）
                 var assembly = System.Reflection.Assembly.GetExecutingAssembly();
                 var version = assembly.GetName().Version;
-                CurrentVersion = version?.ToString(3) ?? "1.0.0";
+                CurrentVersion = version?.ToString(3) ?? "開發版本";
 
                 // 如果已經用 Velopack 打包安裝，優先顯示 Velopack 的版本
                 try

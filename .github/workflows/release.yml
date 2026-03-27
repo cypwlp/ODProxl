@@ -1,5 +1,4 @@
 name: Publish Release
-
 on:
   push:
     tags:
@@ -25,10 +24,8 @@ jobs:
           - os: ubuntu-22.04
             rid: linux-x64
             executable: ODProxl
-
     permissions:
       contents: write
-
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -49,7 +46,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libfuse2 desktop-file-utils libglib2.0-bin
 
-      # Platform-specific icon conversion and environment variables
       - name: Prepare Icon and Platform Flags
         shell: bash
         run: |
@@ -100,29 +96,21 @@ jobs:
             --channel "${{ matrix.rid }}" \
             --outputDir "./Releases"
 
-      # macOS: rename Velopack artifacts to include the correct RID
       - name: Rename macOS Artifacts
         if: runner.os == 'macOS'
         shell: bash
         run: |
           cd ./Releases
-          
-          # Rename main artifacts (nupkg, delta, etc.)
           for f in ODProxl-*-osx-*; do
             if [ -f "$f" ]; then
               newname=$(echo "$f" | sed "s/-osx-/-${{ matrix.rid }}-/")
               mv "$f" "$newname"
             fi
           done
-          
-          # Rename RELEASES and json files
           [ -f "RELEASES-osx" ] && mv "RELEASES-osx" "RELEASES-${{ matrix.rid }}"
           [ -f "releases.osx.json" ] && mv "releases.osx.json" "releases.${{ matrix.rid }}.json"
-          
-          # Rename Portable.zip and Setup.pkg
           [ -f "ODProxl-osx-Portable.zip" ] && mv "ODProxl-osx-Portable.zip" "ODProxl-${{ matrix.rid }}-Portable.zip"
           [ -f "ODProxl-osx-Setup.pkg" ] && mv "ODProxl-osx-Setup.pkg" "ODProxl-${{ matrix.rid }}-Setup.pkg"
-          
           cd ..
 
       - name: List Release Directory
@@ -152,7 +140,7 @@ jobs:
           path: ./Releases
           if-no-files-found: error
 
-  # 同步所有平台产物到国内 WebDAV 服务器
+  # 同步到國內 WebDAV 伺服器（每個版本獨立資料夾）
   sync-to-china:
     name: Sync to China Server (WebDAV)
     needs: publish
@@ -177,7 +165,7 @@ jobs:
       - name: Install rclone
         run: curl -fsSL https://rclone.org/install.sh | sudo bash
 
-      - name: Sync to WebDAV (Optimized)
+      - name: Sync to WebDAV（每個版本建立獨立資料夾）
         run: |
           mkdir -p ~/.config/rclone
           cat > ~/.config/rclone/rclone.conf <<EOF
@@ -191,22 +179,30 @@ jobs:
           chunk_size = 32M
           EOF
 
-          rclone sync ./merged_releases webdav:/ \
+          # 取得版本號（去掉 v）
+          VERSION="${GITHUB_REF_NAME#v}"
+
+          echo "正在上傳版本 $VERSION 到獨立資料夾"
+
+          rclone copy ./merged_releases webdav:/${VERSION}/ \
             --progress \
-            --transfers 16 \
-            --checkers 32 \
+            --transfers 12 \
+            --checkers 24 \
             --multi-thread-streams 8 \
-            --timeout 15m \
+            --timeout 20m \
             --contimeout 2m \
-            --retries 5 \
-            --low-level-retries 10 \
-            --retries-sleep 15s \
+            --retries 10 \
+            --low-level-retries 15 \
+            --retries-sleep 20s \
             --size-only \
             --fast-list \
-            --stats 5s \
-            --log-level INFO
+            --stats 10s \
+            --log-level INFO \
+            --ignore-errors \
+            --skip-links
 
       - name: Verify upload
         run: |
-          echo "Files on WebDAV server:"
-          rclone ls webdav:/ --max-depth 1
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "Files on WebDAV server for version $VERSION:"
+          rclone ls webdav:/${VERSION}/ --max-depth 1

@@ -154,6 +154,21 @@
                                   IsChecked="{Binding ShowDebugInfo}" />
                         <CheckBox Content="繞過生產環境檢查"
                                   IsChecked="{Binding BypassProductionChecks}" />
+                        <StackPanel>
+                            <StackPanel>
+                        <TextBlock Text="Onnx模型根路徑"/>
+                                <TextBox Text="{Binding ModelUrl}"/>
+                             </StackPanel>
+                                                        <StackPanel>
+                        <TextBlock Text="Github路徑"/>
+                                <TextBox Text="{Binding GithubUrl}"/>
+                             </StackPanel>
+                                                                           <StackPanel>
+                        <TextBlock Text="國內服務器根路徑"/>
+                                <TextBox Text="{Binding CNServiceUrl}"/>
+                             </StackPanel>
+                        </StackPanel>
+
 
                         <TextBlock Text="⚠️ 這些設定僅影響開發環境，正式版會自動忽略。"
                                    FontSize="12" Opacity="0.6" />
