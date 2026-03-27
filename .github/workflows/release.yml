@@ -174,19 +174,6 @@ jobs:
           done
           ls -la ./merged_releases
 
-      - name: Test WebDAV Connection
-        run: |
-          echo "Testing WebDAV connection with PROPFIND..."
-          curl -v -X PROPFIND \
-            -u "${{ secrets.WEBDAV_USER }}:${{ secrets.WEBDAV_PASS }}" \
-            -H "Depth: 1" \
-            -H "Content-Type: text/xml" \
-            "${{ secrets.WEBDAV_URL }}" \
-            --connect-timeout 10 \
-            --max-time 30 \
-            -w "\nHTTP Status: %{http_code}\n"
-        continue-on-error: false
-
       - name: Install rclone
         run: curl -fsSL https://rclone.org/install.sh | sudo bash
 
