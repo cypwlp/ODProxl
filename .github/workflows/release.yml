@@ -154,7 +154,7 @@ jobs:
           path: ./Releases
           if-no-files-found: error
 
-  # 同步所有平台產物到國內 WebDAV 伺服器（无认证）
+  # 同步所有平台產物到國內 WebDAV 伺服器（含認證）
   sync-to-china:
     name: Sync to China Server (WebDAV)
     needs: publish
@@ -179,14 +179,16 @@ jobs:
       - name: Install rclone
         run: curl -fsSL https://rclone.org/install.sh | sudo bash
 
-      - name: Sync to WebDAV (Anonymous)
+      - name: Sync to WebDAV (with Authentication)
         run: |
           mkdir -p ~/.config/rclone
           cat > ~/.config/rclone/rclone.conf <<EOF
           [webdav]
           type = webdav
-          url = http://interior.topmix.net/info/system/software/ODProxl/
+          url = ${{ secrets.WEBDAV_TopMixUrl }}
           vendor = other
+          user = ${{ secrets.WEBDAV_USER }}
+          pass = $(echo -n "${{ secrets.WEBDAV_PASS }}" | rclone obscure)
           EOF
 
           rclone sync ./merged_releases webdav:/ \
