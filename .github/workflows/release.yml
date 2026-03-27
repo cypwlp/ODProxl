@@ -174,46 +174,53 @@ jobs:
           done
           ls -la ./merged_releases
 
-      # 调试：测试 WebDAV 连接
       - name: Test WebDAV Connection
         run: |
           echo "Testing WebDAV connection with PROPFIND..."
-          curl -u "${{ secrets.WEBDAV_USER }}:${{ secrets.WEBDAV_PASS }}" \
-               -X PROPFIND \
-               -H "Depth: 1" \
-               -H "Content-Type: text/xml" \
-               "${{ secrets.WEBDAV_URL }}" \
-               -w "\nHTTP Status: %{http_code}\n" \
-               -v
-        continue-on-error: true  # 仅用于调试，不中断流程
+          curl -v -X PROPFIND \
+            -u "${{ secrets.WEBDAV_USER }}:${{ secrets.WEBDAV_PASS }}" \
+            -H "Depth: 1" \
+            -H "Content-Type: text/xml" \
+            "${{ secrets.WEBDAV_URL }}" \
+            --connect-timeout 10 \
+            --max-time 30 \
+            -w "\nHTTP Status: %{http_code}\n"
+        continue-on-error: false
 
       - name: Install rclone
         run: curl -fsSL https://rclone.org/install.sh | sudo bash
 
-      - name: Sync to WebDAV (with Authentication)
+      - name: Sync to WebDAV (Optimized)
         run: |
           mkdir -p ~/.config/rclone
           cat > ~/.config/rclone/rclone.conf <<EOF
           [webdav]
           type = webdav
           url = ${{ secrets.WEBDAV_URL }}
-          vendor = webdav
+          vendor = other
           user = ${{ secrets.WEBDAV_USER }}
-          # 修复：将密码作为参数传递给 rclone obscure，而不是通过管道
           pass = $(rclone obscure "${{ secrets.WEBDAV_PASS }}")
+          buffer_size = 64M
+          chunk_size = 32M
           EOF
 
           rclone sync ./merged_releases webdav:/ \
             --progress \
-            --transfers 12 \
-            --checkers 24 \
-            --multi-thread-streams 4 \
-            --timeout 10m \
+            --transfers 16 \
+            --checkers 32 \
+            --multi-thread-streams 8 \
+            --timeout 15m \
             --contimeout 2m \
-            --retries 10 \
-            --low-level-retries 20 \
+            --retries 5 \
+            --low-level-retries 10 \
             --retries-sleep 15s \
             --size-only \
             --fast-list \
-            --dump headers \
-            -vv
+            --stats 5s \
+            --log-level INFO \
+            -v
+
+      - name: Verify upload
+        run: |
+          echo "Files on WebDAV server:"
+          rclone ls webdav:/ --max-depth 1
