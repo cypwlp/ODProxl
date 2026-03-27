@@ -13,26 +13,26 @@ namespace ODProxl.Services.impls
     /// <summary>
     /// 自訂的 HttpClientFileDownloader，用來支援 WebDAV Basic Authentication
     /// </summary>
-    public class WebDavFileDownloader : HttpClientFileDownloader
-    {
-        private readonly string _username;
-        private readonly string _password;
+    //public class WebDavFileDownloader : HttpClientFileDownloader
+    //{
+    //    private readonly string _username;
+    //    private readonly string _password;
 
-        public WebDavFileDownloader(string username, string password)
-        {
-            _username = username;
-            _password = password;
-        }
+    //    public WebDavFileDownloader(string username, string password)
+    //    {
+    //        _username = username;
+    //        _password = password;
+    //    }
 
-        protected override HttpClientHandler CreateHttpClientHandler()
-        {
-            return new HttpClientHandler
-            {
-                Credentials = new NetworkCredential(_username, _password),
-                PreAuthenticate = true
-            };
-        }
-    }
+    //    protected override HttpClientHandler CreateHttpClientHandler()
+    //    {
+    //        return new HttpClientHandler
+    //        {
+    //            Credentials = new NetworkCredential(_username, _password),
+    //            PreAuthenticate = true
+    //        };
+    //    }
+    //}
 
     public class UpdateService : IUpdateService
     {
@@ -60,14 +60,14 @@ namespace ODProxl.Services.impls
                     string rid = RuntimeInformation.RuntimeIdentifier;
 
                     // ========== 請替換為實際的 WebDAV 帳號密碼 ==========
-                    string username = "WebUser";
-                    string password = "2549979631Wei@";
-                    // ====================================================
+                    //string username = "WebUser";
+                    //string password = "2549979631Wei@";
+                    //// ====================================================
+                    
+                    //// 使用自訂的 Downloader 支援 WebDAV 認證
+                    //var downloader = new WebDavFileDownloader(username, password);
 
-                    // 使用自訂的 Downloader 支援 WebDAV 認證
-                    var downloader = new WebDavFileDownloader(username, password);
-
-                    var source = new SimpleWebSource("http://129.204.149.106:8080/ODProxl/", downloader);
+                    var source = new SimpleWebSource("http://interior.topmix.net/info/system/software/ODProxl/");
 
                     var options = new UpdateOptions
                     {
