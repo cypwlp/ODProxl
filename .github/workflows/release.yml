@@ -7,7 +7,6 @@ on:
 
 jobs:
   publish:
-    # 僅當推送的是 tag 時才執行（雙重保障）
     if: startsWith(github.ref, 'refs/tags/v')
     name: Publish for ${{ matrix.rid }}
     runs-on: ${{ matrix.os }}
@@ -146,7 +145,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # Upload artifact for later merging
       - name: Upload Artifact (Releases)
         uses: actions/upload-artifact@v4
         with:
@@ -154,7 +152,7 @@ jobs:
           path: ./Releases
           if-no-files-found: error
 
-  # 同步所有平台產物到國內 WebDAV 伺服器（含認證）
+  # 同步所有平台产物到国内 WebDAV 服务器
   sync-to-china:
     name: Sync to China Server (WebDAV)
     needs: publish
@@ -176,6 +174,19 @@ jobs:
           done
           ls -la ./merged_releases
 
+      # 调试：测试 WebDAV 连接
+      - name: Test WebDAV Connection
+        run: |
+          echo "Testing WebDAV connection with PROPFIND..."
+          curl -u "${{ secrets.WEBDAV_USER }}:${{ secrets.WEBDAV_PASS }}" \
+               -X PROPFIND \
+               -H "Depth: 1" \
+               -H "Content-Type: text/xml" \
+               "${{ secrets.WEBDAV_URL }}" \
+               -w "\nHTTP Status: %{http_code}\n" \
+               -v
+        continue-on-error: true  # 仅用于调试，不中断流程
+
       - name: Install rclone
         run: curl -fsSL https://rclone.org/install.sh | sudo bash
 
@@ -185,8 +196,8 @@ jobs:
           cat > ~/.config/rclone/rclone.conf <<EOF
           [webdav]
           type = webdav
-          url = ${{ secrets.WEBDAV_TopMixUrl }}
-          vendor = other
+          url = ${{ secrets.WEBDAV_URL }}
+          vendor = webdav
           user = ${{ secrets.WEBDAV_USER }}
           pass = $(echo -n "${{ secrets.WEBDAV_PASS }}" | rclone obscure)
           EOF
@@ -202,4 +213,6 @@ jobs:
             --low-level-retries 20 \
             --retries-sleep 15s \
             --size-only \
-            --fast-list
+            --fast-list \
+            --dump headers \
+            -vv
