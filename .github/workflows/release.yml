@@ -204,8 +204,7 @@ jobs:
             --size-only \
             --fast-list \
             --stats 5s \
-            --log-level INFO \
-            -v
+            --log-level INFO
 
       - name: Verify upload
         run: |
