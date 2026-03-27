@@ -154,7 +154,7 @@ jobs:
           path: ./Releases
           if-no-files-found: error
 
-  # 同步所有平台產物到國內服務器（支持認證與匿名 WebDAV）
+  # 同步所有平台產物到國內 WebDAV 伺服器（无认证）
   sync-to-china:
     name: Sync to China Server (WebDAV)
     needs: publish
@@ -179,56 +179,17 @@ jobs:
       - name: Install rclone
         run: curl -fsSL https://rclone.org/install.sh | sudo bash
 
-      # 同步到原有的认证服务器（如果配置了凭据）
-      - name: Sync to Authenticated WebDAV
-        env:
-          WEBDAV_URL: ${{ secrets.WEBDAV_BASE_URL }}
-          WEBDAV_USER: ${{ secrets.SERVER_USER }}
-          WEBDAV_PASS: ${{ secrets.SERVER_PASSWORD }}
-        run: |
-          if [ -z "$WEBDAV_URL" ] || [ -z "$WEBDAV_USER" ] || [ -z "$WEBDAV_PASS" ]; then
-            echo "WARNING: Authenticated WebDAV credentials not set. Skipping."
-            exit 0
-          fi
-
-          mkdir -p ~/.config/rclone
-          cat > ~/.config/rclone/rclone.conf <<EOF
-          [authwebdav]
-          type = webdav
-          url = $WEBDAV_URL
-          vendor = other
-          user = $WEBDAV_USER
-          pass = $(rclone obscure "$WEBDAV_PASS")
-          EOF
-
-          rclone sync ./merged_releases authwebdav:/ \
-            --progress \
-            --transfers 12 \
-            --checkers 24 \
-            --multi-thread-streams 4 \
-            --timeout 10m \
-            --contimeout 2m \
-            --retries 10 \
-            --low-level-retries 20 \
-            --retries-sleep 15s \
-            --size-only \
-            --fast-list
-
-      # 同步到新的无认证 WebDAV 服务器
-      - name: Sync to Unauthenticated WebDAV
-        env:
-          NEW_WEBDAV_URL: "http://interior.topmix.net/info/system/software/ODProxl/"
+      - name: Sync to WebDAV (Anonymous)
         run: |
           mkdir -p ~/.config/rclone
           cat > ~/.config/rclone/rclone.conf <<EOF
-          [newwebdav]
+          [webdav]
           type = webdav
-          url = $NEW_WEBDAV_URL
+          url = http://interior.topmix.net/info/system/software/ODProxl/
           vendor = other
-          # 不提供 user 和 pass 表示匿名访问
           EOF
 
-          rclone sync ./merged_releases newwebdav:/ \
+          rclone sync ./merged_releases webdav:/ \
             --progress \
             --transfers 12 \
             --checkers 24 \
