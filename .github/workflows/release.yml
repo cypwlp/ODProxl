@@ -199,7 +199,8 @@ jobs:
           url = ${{ secrets.WEBDAV_URL }}
           vendor = webdav
           user = ${{ secrets.WEBDAV_USER }}
-          pass = $(echo -n "${{ secrets.WEBDAV_PASS }}" | rclone obscure)
+          # 修复：将密码作为参数传递给 rclone obscure，而不是通过管道
+          pass = $(rclone obscure "${{ secrets.WEBDAV_PASS }}")
           EOF
 
           rclone sync ./merged_releases webdav:/ \
