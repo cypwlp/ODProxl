@@ -4,6 +4,6 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="ODProxl.HomePage">
-<TextBlock>5.0.4(測試更新）測試版本,http://interior.topmix.net/info/system/software/ODProxl/5.0.4</TextBlock>
+<TextBlock>5.0.5(測試更新）測試版本,http://interior.topmix.net/info/system/software/ODProxl/5.0.5</TextBlock>
 </UserControl>
          
