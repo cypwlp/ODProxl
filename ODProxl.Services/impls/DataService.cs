@@ -140,14 +140,41 @@ namespace ODProxl.Services.impls
         #region 確保連線與資料庫切換
         private async Task EnsureClientAndDatabaseAsync(string database)
         {
+            // === 1. 防止尚未登入就使用（最常見的錯誤）===
+            if (string.IsNullOrWhiteSpace(_userName))
+            {
+                throw new InvalidOperationException(
+                    "DataService 未完成登入初始化！\n" +
+                    "請確保在開啟「用戶偏好設定」頁面前，已呼叫 _dataService.InitializeAsync(username, password, database)");
+            }
+
+            // === 2. 關鍵修復：自動處理 Faulted / Closed 狀態 ===
+            if (_soapClient != null)
+            {
+                var state = _soapClient.State;
+                if (state == CommunicationState.Faulted || state == CommunicationState.Closed)
+                {
+                    try
+                    {
+                        _soapClient.Abort();   // 安全終止壞掉的 Client
+                    }
+                    catch
+                    {
+                        // 忽略 Abort 時可能發生的例外
+                    }
+                    _soapClient = null;        // 強制重新建立新的 Client
+                }
+            }
+
+            // === 3. 如果 Client 不存在，就建立全新的 Client ===
             if (_soapClient == null)
             {
                 var binding = new BasicHttpBinding
                 {
                     Security = {
-                        Mode = BasicHttpSecurityMode.TransportCredentialOnly,
-                        Transport = { ClientCredentialType = HttpClientCredentialType.Basic }
-                    },
+                Mode = BasicHttpSecurityMode.TransportCredentialOnly,
+                Transport = { ClientCredentialType = HttpClientCredentialType.Basic }
+            },
                     MaxReceivedMessageSize = int.MaxValue,
                     MaxBufferSize = int.MaxValue,
                     ReaderQuotas = System.Xml.XmlDictionaryReaderQuotas.Max,
@@ -158,10 +185,13 @@ namespace ODProxl.Services.impls
 
                 var endpoint = new EndpointAddress(_serviceUrl);
                 _soapClient = new Service1SoapClient(binding, endpoint);
+
+                // 設定登入憑證
                 _soapClient.ClientCredentials.UserName.UserName = _userName;
                 _soapClient.ClientCredentials.UserName.Password = _password;
             }
 
+            // === 4. 切換資料庫（如果有傳入）===
             if (!string.IsNullOrEmpty(database))
             {
                 await _soapClient.SetDataBaseAsync(database);

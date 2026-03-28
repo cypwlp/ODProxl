@@ -55,16 +55,27 @@ namespace ODProxl.ViewModels.Dialogs
         #region 登錄邏輯
         private async Task LoginAsync()
         {
-            bool success = await _dataService.InitializeAsync(UserName, Password, Database);
+            if (string.IsNullOrWhiteSpace(UserName) || string.IsNullOrWhiteSpace(Password))
+            {
+                return;
+            }
+
+            // 只呼叫一次 InitializeAsync（使用使用者輸入的帳密 + 應用程式主要資料庫 "DetOB"）
+            bool success = await _dataService!.InitializeAsync(UserName!, Password!, "DetOB");
+
             if (success)
             {
                 var loginInfo = await _dataService.GetLoginInfoAsync();
+
+                // 把登入資訊傳給下一頁
                 var paras = new DialogParameters();
                 paras.Add("LoginInfo", loginInfo);
+
                 RequestClose.Invoke(paras, ButtonResult.OK);
             }
             else
             {
+                // 登入失敗處理（可自行加上訊息框）
 
             }
         }
