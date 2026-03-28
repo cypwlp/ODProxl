@@ -59,15 +59,11 @@ namespace ODProxl.ViewModels.Dialogs
             {
                 return;
             }
-
-            // 只呼叫一次 InitializeAsync（使用使用者輸入的帳密 + 應用程式主要資料庫 "DetOB"）
-            bool success = await _dataService!.InitializeAsync(UserName!, Password!, "DetOB");
+            bool success = await _dataService!.InitializeAsync(UserName!, Password!, "ODProxl");
 
             if (success)
             {
                 var loginInfo = await _dataService.GetLoginInfoAsync();
-
-                // 把登入資訊傳給下一頁
                 var paras = new DialogParameters();
                 paras.Add("LoginInfo", loginInfo);
 

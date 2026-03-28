@@ -1,9 +1,11 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Material.Icons;
 using Material.Icons.Avalonia;
+using ODProxl.ViewModels.Dialogs; // 确保引用了 ViewModel 命名空间
 
 namespace ODProxl.Dialogs;
 
@@ -13,6 +15,7 @@ public partial class LoginDialog : UserControl
     {
         InitializeComponent();
     }
+
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
@@ -56,14 +59,39 @@ public partial class LoginDialog : UserControl
     }
 
     /// <summary>
+    /// 用户名输入框按 Enter 键时跳转到密码框
+    /// </summary>
+    private void UserNameTextBox_KeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter)
+        {
+            PasswordTextBox?.Focus();
+            e.Handled = true;
+        }
+    }
+
+    /// <summary>
+    /// 密码框按 Enter 键时触发登录命令
+    /// </summary>
+    private void PasswordTextBox_KeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter)
+        {
+            if (DataContext is LoginDialogViewModel vm)
+            {
+                vm.LoginCommand?.Execute();
+            }
+            e.Handled = true;
+        }
+    }
+
+    /// <summary>
     /// 切換窗口最大化狀態並更新圖標
     /// </summary>
     private void ToggleMaximize()
     {
         if (VisualRoot is Window window)
         {
-
-
             if (window.WindowState == WindowState.Maximized)
             {
                 window.WindowState = WindowState.Normal;

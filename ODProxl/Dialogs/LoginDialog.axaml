@@ -96,20 +96,18 @@
                                    Margin="0,5,0,0"/>
                     </StackPanel>
 
-                    <!-- 用戶名輸入框 -->
+                    <!-- 用户名输入框 -->
                     <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Margin="0,0,0,20">
-                        <TextBlock Text="用戶名"
-                                   FontSize="13"
-                                   FontWeight="Medium"
-                                   Foreground="#475569"
-                                   Margin="0,0,0,5"/>
+                        <TextBlock Text="用戶名" FontSize="13" FontWeight="Medium" Foreground="#475569" Margin="0,0,0,5"/>
                         <Border Background="#F1F5F9" CornerRadius="8" Padding="2">
-                            <TextBox Text="{Binding UserName, Mode=TwoWay}"
+                            <TextBox x:Name="UserNameTextBox"
+                                     Text="{Binding UserName, Mode=TwoWay}"
                                      FontSize="14"
                                      Background="Transparent"
                                      BorderThickness="0"
                                      Foreground="Black"
-                                     Padding="12">
+                                     Padding="12"
+                                     KeyDown="UserNameTextBox_KeyDown">
                                 <TextBox.Styles>
                                     <Style Selector="TextBox:focus">
                                         <Setter Property="Background" Value="#FFFFFF"/>
@@ -128,17 +126,8 @@
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="密碼"
-                                       FontSize="13"
-                                       FontWeight="Medium"
-                                       Foreground="#475569"
-                                       Margin="0,0,0,5"/>
-                            <TextBlock Grid.Column="1"
-                                       Text="忘記密碼？"
-                                       FontSize="12"
-                                       Foreground="#4F46E5"
-                                       VerticalAlignment="Center"
-                                       Cursor="Hand">
+                            <TextBlock Text="密碼" FontSize="13" FontWeight="Medium" Foreground="#475569" Margin="0,0,0,5"/>
+                            <TextBlock Grid.Column="1" Text="忘記密碼？" FontSize="12" Foreground="#4F46E5" VerticalAlignment="Center" Cursor="Hand">
                                 <TextBlock.Styles>
                                     <Style Selector="TextBlock:pointerover">
                                         <Setter Property="Foreground" Value="#4338CA"/>
@@ -148,13 +137,15 @@
                             </TextBlock>
                         </Grid>
                         <Border Background="#F1F5F9" CornerRadius="8" Padding="2">
-                            <TextBox Text="{Binding Password, Mode=TwoWay}"
+                            <TextBox x:Name="PasswordTextBox"
+                                     Text="{Binding Password, Mode=TwoWay}"
                                      FontSize="14"
                                      Background="Transparent"
                                      BorderThickness="0"
                                      PasswordChar="*"
                                      Foreground="Black"
-                                     Padding="12">
+                                     Padding="12"
+                                     KeyDown="PasswordTextBox_KeyDown">
                                 <TextBox.Styles>
                                     <Style Selector="TextBox:focus">
                                         <Setter Property="Background" Value="#FFFFFF"/>
@@ -173,7 +164,7 @@
                               Foreground="#64748B"
                               Margin="0,0,0,30"/>
 
-                    <!-- 登錄按鈕 -->
+                    <!-- 登錄按鈕（移除了 HotKey="Enter"） -->
                     <Button Grid.Row="4"
                             Grid.Column="0"
                             Command="{Binding LoginCommand}"
@@ -184,7 +175,6 @@
                             Background="#4F46E5"
                             BorderThickness="0"
                             CornerRadius="8"
-                            HotKey="Enter"
                             Height="44"
                             Cursor="Hand">
                         <Button.Styles>

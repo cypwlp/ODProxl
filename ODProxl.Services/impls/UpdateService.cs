@@ -18,10 +18,10 @@ namespace ODProxl.Services.impls
         {
             Timeout = TimeSpan.FromSeconds(15)
         };
-
         public UpdateService(IDialogService dialogService)
         {
             _dialogService = dialogService;
+            _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("ODProxl/UpdateChecker");
         }
 
         public async Task UpdateODProxlAsync(string countryCode)

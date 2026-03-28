@@ -1,20 +1,16 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using Prism.Mvvm;
+using System;
 
 namespace ODProxl.EntityModels
 {
     public class FileSystemItem : BindableBase
     {
-        public ObservableCollection<FileSystemItem> Items { get; } = [];
         public int Index { get; set; }
         public string Name { get; set; } = string.Empty;
         public string FullPath { get; set; } = string.Empty;
         public long? Size { get; set; }
         public DateTime LastModified { get; set; }
+
         public string CreatedTimeDisplay => LastModified.ToString("yyyy-MM-dd HH:mm");
         public string SizeDisplay => Size.HasValue
             ? $"{Size.Value / (1024.0 * 1024.0):0.##} MB"
@@ -27,23 +23,19 @@ namespace ODProxl.EntityModels
             set
             {
                 if (_isEnabled == value) return;
+
                 _isEnabled = value;
                 RaisePropertyChanged(nameof(IsEnabled));
 
-                if (value && OwnerViewModel != null)
+                // 發出事件，讓 ViewModel 處理業務邏輯
+                if (value) // 只有「啟用」時才觸發
                 {
-                    // 互斥：關閉其他項目
-                    foreach (var other in Items)
-                    {
-                        if (other != this)
-                        {
-                            other.IsEnabled = false;
-                        }
-                    }
+                    EnabledChanged?.Invoke(this, EventArgs.Empty);
                 }
             }
         }
 
-        public string? OwnerViewModel { get; set; }
+        // 事件：當 IsEnabled 變為 true 時觸發
+        public event EventHandler? EnabledChanged;
     }
 }

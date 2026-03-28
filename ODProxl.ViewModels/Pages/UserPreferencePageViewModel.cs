@@ -147,11 +147,11 @@ namespace ODProxl.ViewModels.Pages
                 var keyParams = keys.Select((k, i) => new SqlParameter($"@key{i}", k)).ToArray();
 
                 // 2. 查詢已存在的鍵
-                string checkSql = $"SELECT cg_key FROM SysConfig WHERE cg_key IN ({inClause}) AND cg_userAccount = @userAccount";
+                string checkSql = $"SELECT cg_key FROM sys_config WHERE cg_key IN ({inClause}) AND cg_userAccount = @userAccount";
                 var existingKeys = new HashSet<string>();
 
-                var ds = await _dataService.GetSelectResultParameterizedQueryAsync(
-                    "DetOB", checkSql, "", 0,
+                var ds = await _dataService.QueryParamAsync(
+                    "ODProxl", checkSql, "", 0,
                     keyParams.Concat(new[] { new SqlParameter("@userAccount", LoginInfo.LoginName) }).ToArray());
 
                 if (ds?.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0)
@@ -173,7 +173,7 @@ namespace ODProxl.ViewModels.Pages
                     // 更新已存在記錄
                     foreach (var pair in toUpdate)
                     {
-                        string updateSql = "UPDATE SysConfig SET cg_value = @value WHERE cg_key = @key AND cg_userAccount = @userAccount";
+                        string updateSql = "UPDATE sys_config SET cg_value = @value WHERE cg_key = @key AND cg_userAccount = @userAccount";
                         var parameters = new[]
                         {
                             new SqlParameter("@key", pair.Key),
@@ -181,7 +181,7 @@ namespace ODProxl.ViewModels.Pages
                             new SqlParameter("@userAccount", LoginInfo.LoginName)
                         };
 
-                        string result = await _dataService.ExecuteParameterizedQueryAsync("DetOB", updateSql, parameters);
+                        string result = await _dataService.ExecParamAsync("ODProxl", updateSql, parameters);
                         if (result?.StartsWith("0") == true)
                             throw new Exception($"更新失敗：{pair.Key}");
                     }
@@ -189,7 +189,7 @@ namespace ODProxl.ViewModels.Pages
                     // 插入新記錄
                     foreach (var pair in toInsert)
                     {
-                        string insertSql = "INSERT INTO SysConfig (cg_key, cg_value, cg_userAccount, cd_creationTime) " +
+                        string insertSql = "INSERT into sys_config (cg_key, cg_value, cg_userAccount, cd_creationTime) " +
                                            "VALUES (@key, @value, @userAccount, GETDATE())";
 
                         var parameters = new[]
@@ -199,7 +199,7 @@ namespace ODProxl.ViewModels.Pages
                             new SqlParameter("@userAccount", LoginInfo.LoginName)
                         };
 
-                        string result = await _dataService.ExecuteParameterizedQueryAsync("DetOB", insertSql, parameters);
+                        string result = await _dataService.ExecParamAsync("ODProxl", insertSql, parameters);
                         if (result?.StartsWith("0") == true)
                             throw new Exception($"插入失敗：{pair.Key}");
                     }

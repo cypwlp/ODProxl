@@ -89,18 +89,19 @@
                                         IsReadOnly="True"/>
 
                     <!-- 狀態（互斥） -->
-                    <DataGridTemplateColumn Header="狀態" Width="120">
-                        <DataGridTemplateColumn.CellTemplate>
-                            <DataTemplate>
-                                <ToggleSwitch IsChecked="{Binding IsEnabled, Mode=TwoWay}"
-                                              OffContent="已停用"
-                                              OnContent="已啟用"
-                                              Width="96"
-                                              Classes="Material"
-                                              HorizontalAlignment="Center"/>
-                            </DataTemplate>
-                        </DataGridTemplateColumn.CellTemplate>
-                    </DataGridTemplateColumn>
+<!-- 狀態（互斥） -->
+<DataGridTemplateColumn Header="狀態" Width="120">
+    <DataGridTemplateColumn.CellTemplate>
+        <DataTemplate>
+            <ToggleSwitch IsChecked="{Binding IsEnabled, Mode=TwoWay}"
+                          OffContent="已停用"
+                          OnContent="已啟用"
+                          Width="96"
+                          Classes="Material"
+                          HorizontalAlignment="Center"/>
+        </DataTemplate>
+    </DataGridTemplateColumn.CellTemplate>
+</DataGridTemplateColumn>
 
                     <!-- 操作 -->
                     <DataGridTemplateColumn Header="操作" Width="100">

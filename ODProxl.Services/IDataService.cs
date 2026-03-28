@@ -8,6 +8,7 @@ namespace ODProxl.Services
 {
     public interface IDataService
     {
+        // ==================== 基礎屬性 ====================
         string Server { get; }
         string Database { get; }
         string UserName { get; }
@@ -20,40 +21,44 @@ namespace ODProxl.Services
         int TimeOut { get; set; }
         string UPS { get; }
 
-        // 認證相關
+        // ==================== 認證相關 ====================
         Task<bool> InitializeAsync(string username, string password, string database);
         bool Authenticate();
         Task<LoginInfo> GetLoginInfoAsync();
 
-        // 核心資料操作 - 支援動態切換資料庫
-        Task<string> ExecuteNonQueryAsync(string database, string sqlCommand);
-        string ExecuteNonQuery(string database, string sqlCommand);
+        // ==================== 1. 執行命令（INSERT / UPDATE / DELETE） ====================
+        Task<string> ExecAsync(string database, string sql);
+        string Exec(string database, string sql);
 
-        Task<string> ExecuteScalarAsync(string database, string sqlCommand);
-        string ExecuteScalar(string database, string sqlCommand);
+        // ==================== 2. 執行標量查詢（返回單一值） ====================
+        Task<string> ScalarAsync(string database, string sql);
+        string Scalar(string database, string sql);
 
-        Task<DataSet> GetSelectResultAsync(string database, string selectCommand, string message = "", int runType = 0);
-        DataSet GetSelectResult(string database, string selectCommand, string message = "", int runType = 0);
-        DataSet GetSelectResult(string database, string selectCommand);
+        // ==================== 3. 執行查詢，返回 DataSet ====================
+        Task<DataSet> QueryAsync(string database, string sql, string msg = "", int runType = 0);
+        DataSet Query(string database, string sql, string msg = "", int runType = 0);
+        DataSet Query(string database, string sql);   // 簡便重載
 
-        Task<string> UpdateDataTableAsync(string database, DataSet dsChangeDataSet, string tableName = "");
-        string UpdateDataTable(string database, DataSet dsChangeDataSet, string tableName = "");
+        // ==================== 4. 儲存 DataTable 變更 ====================
+        Task<string> SaveAsync(string database, DataSet ds, string tableName = "");
+        string Save(string database, DataSet ds, string tableName = "");
 
-        string CheckGrammar(string expression);
+        // ==================== 5. SQL 語法檢查（遠端暫不支援） ====================
+        string CheckSyntax(string expression);
 
-        // ==================== 參數化查詢完整支援 ====================
-        Task<string> ExecuteParameterizedQueryAsync(string database, ParameterizedQuery query);
-        string ExecuteParameterizedQuery(string database, ParameterizedQuery query);
+        // ==================== 6. 參數化版本（安全防注入） ====================
+        Task<string> ExecParamAsync(string database, ParameterizedQuery query);
+        string ExecParam(string database, ParameterizedQuery query);
 
-        Task<string> ExecuteScalarParameterizedQueryAsync(string database, ParameterizedQuery query);
-        string ExecuteScalarParameterizedQuery(string database, ParameterizedQuery query);
+        Task<string> ScalarParamAsync(string database, ParameterizedQuery query);
+        string ScalarParam(string database, ParameterizedQuery query);
 
-        Task<DataSet> GetSelectResultParameterizedQueryAsync(string database, ParameterizedQuery query, string message = "", int runType = 0);
-        DataSet GetSelectResultParameterizedQuery(string database, ParameterizedQuery query, string message = "", int runType = 0);
+        Task<DataSet> QueryParamAsync(string database, ParameterizedQuery query, string msg = "", int runType = 0);
+        DataSet QueryParam(string database, ParameterizedQuery query, string msg = "", int runType = 0);
 
-        // 簡便重載
-        Task<string> ExecuteParameterizedQueryAsync(string database, string sql, params SqlParameter[] parameters);
-        Task<string> ExecuteScalarParameterizedQueryAsync(string database, string sql, params SqlParameter[] parameters);
-        Task<DataSet> GetSelectResultParameterizedQueryAsync(string database, string sql, string message, int runType, params SqlParameter[] parameters);
+        // 簡便重載：直接傳入 SQL 與參數陣列
+        Task<string> ExecParamAsync(string database, string sql, params SqlParameter[] parameters);
+        Task<string> ScalarParamAsync(string database, string sql, params SqlParameter[] parameters);
+        Task<DataSet> QueryParamAsync(string database, string sql, string msg, int runType, params SqlParameter[] parameters);
     }
 }

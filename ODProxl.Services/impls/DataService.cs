@@ -140,7 +140,6 @@ namespace ODProxl.Services.impls
         #region 確保連線與資料庫切換
         private async Task EnsureClientAndDatabaseAsync(string database)
         {
-            // === 1. 防止尚未登入就使用（最常見的錯誤）===
             if (string.IsNullOrWhiteSpace(_userName))
             {
                 throw new InvalidOperationException(
@@ -148,7 +147,6 @@ namespace ODProxl.Services.impls
                     "請確保在開啟「用戶偏好設定」頁面前，已呼叫 _dataService.InitializeAsync(username, password, database)");
             }
 
-            // === 2. 關鍵修復：自動處理 Faulted / Closed 狀態 ===
             if (_soapClient != null)
             {
                 var state = _soapClient.State;
@@ -156,25 +154,21 @@ namespace ODProxl.Services.impls
                 {
                     try
                     {
-                        _soapClient.Abort();   // 安全終止壞掉的 Client
+                        _soapClient.Abort();
                     }
-                    catch
-                    {
-                        // 忽略 Abort 時可能發生的例外
-                    }
-                    _soapClient = null;        // 強制重新建立新的 Client
+                    catch { }
+                    _soapClient = null;
                 }
             }
 
-            // === 3. 如果 Client 不存在，就建立全新的 Client ===
             if (_soapClient == null)
             {
                 var binding = new BasicHttpBinding
                 {
                     Security = {
-                Mode = BasicHttpSecurityMode.TransportCredentialOnly,
-                Transport = { ClientCredentialType = HttpClientCredentialType.Basic }
-            },
+                        Mode = BasicHttpSecurityMode.TransportCredentialOnly,
+                        Transport = { ClientCredentialType = HttpClientCredentialType.Basic }
+                    },
                     MaxReceivedMessageSize = int.MaxValue,
                     MaxBufferSize = int.MaxValue,
                     ReaderQuotas = System.Xml.XmlDictionaryReaderQuotas.Max,
@@ -185,17 +179,14 @@ namespace ODProxl.Services.impls
 
                 var endpoint = new EndpointAddress(_serviceUrl);
                 _soapClient = new Service1SoapClient(binding, endpoint);
-
-                // 設定登入憑證
                 _soapClient.ClientCredentials.UserName.UserName = _userName;
                 _soapClient.ClientCredentials.UserName.Password = _password;
             }
 
-            // === 4. 切換資料庫（如果有傳入）===
             if (!string.IsNullOrEmpty(database))
             {
                 await _soapClient.SetDataBaseAsync(database);
-                _database = database;   // 更新目前使用的資料庫
+                _database = database;
             }
         }
 
@@ -205,18 +196,17 @@ namespace ODProxl.Services.impls
             {
                 await WebServiceAuthenticateAsync();
             }
-
             await EnsureClientAndDatabaseAsync(database ?? _database);
         }
         #endregion
 
-        #region 核心資料操作（支援動態切換資料庫）
-        public async Task<string> ExecuteNonQueryAsync(string database, string sqlCommand)
+        #region 核心操作（精簡名稱）
+        public async Task<string> ExecAsync(string database, string sql)
         {
             await EnsureAuthenticatedAsync(database);
             try
             {
-                return await _soapClient!.ExecuteNonQueryAsync(sqlCommand);
+                return await _soapClient!.ExecuteNonQueryAsync(sql);
             }
             catch (Exception ex)
             {
@@ -225,15 +215,15 @@ namespace ODProxl.Services.impls
             }
         }
 
-        public string ExecuteNonQuery(string database, string sqlCommand)
-            => Task.Run(() => ExecuteNonQueryAsync(database, sqlCommand)).Result;
+        public string Exec(string database, string sql)
+            => Task.Run(() => ExecAsync(database, sql)).Result;
 
-        public async Task<string> ExecuteScalarAsync(string database, string sqlCommand)
+        public async Task<string> ScalarAsync(string database, string sql)
         {
             await EnsureAuthenticatedAsync(database);
             try
             {
-                return await _soapClient!.ExecuteScalarAsync(sqlCommand);
+                return await _soapClient!.ExecuteScalarAsync(sql);
             }
             catch (Exception ex)
             {
@@ -242,18 +232,18 @@ namespace ODProxl.Services.impls
             }
         }
 
-        public string ExecuteScalar(string database, string sqlCommand)
-            => Task.Run(() => ExecuteScalarAsync(database, sqlCommand)).Result;
+        public string Scalar(string database, string sql)
+            => Task.Run(() => ScalarAsync(database, sql)).Result;
 
-        public async Task<DataSet> GetSelectResultAsync(string database, string selectCommand, string message = "", int runType = 0)
+        public async Task<DataSet> QueryAsync(string database, string sql, string msg = "", int runType = 0)
         {
             await EnsureAuthenticatedAsync(database);
             try
             {
                 var request = new GetSelectResultRequest
                 {
-                    strSelectCommand = selectCommand,
-                    Message = message ?? "",
+                    strSelectCommand = sql,
+                    Message = msg ?? "",
                     RunType = runType
                 };
                 var response = await _soapClient!.GetSelectResultAsync(request);
@@ -266,22 +256,22 @@ namespace ODProxl.Services.impls
             }
         }
 
-        public DataSet GetSelectResult(string database, string selectCommand, string message = "", int runType = 0)
-            => Task.Run(() => GetSelectResultAsync(database, selectCommand, message, runType)).Result;
+        public DataSet Query(string database, string sql, string msg = "", int runType = 0)
+            => Task.Run(() => QueryAsync(database, sql, msg, runType)).Result;
 
-        public DataSet GetSelectResult(string database, string selectCommand)
-            => GetSelectResult(database, selectCommand, "", 0);
+        public DataSet Query(string database, string sql)
+            => Query(database, sql, "", 0);
 
-        public async Task<string> UpdateDataTableAsync(string database, DataSet dsChangeDataSet, string tableName = "")
+        public async Task<string> SaveAsync(string database, DataSet ds, string tableName = "")
         {
             await EnsureAuthenticatedAsync(database);
 
-            if (dsChangeDataSet == null || dsChangeDataSet.Tables.Count == 0)
+            if (ds == null || ds.Tables.Count == 0)
                 return "0 資料集為空";
 
             if (string.IsNullOrEmpty(tableName))
             {
-                var firstTable = dsChangeDataSet.Tables.Cast<DataTable>().FirstOrDefault();
+                var firstTable = ds.Tables.Cast<DataTable>().FirstOrDefault();
                 tableName = firstTable?.TableName ?? "";
             }
 
@@ -290,7 +280,7 @@ namespace ODProxl.Services.impls
 
             try
             {
-                var array = ConvertDataSetToArrayOfXElement(dsChangeDataSet, tableName);
+                var array = ConvertDataSetToArrayOfXElement(ds, tableName);
                 return await _soapClient!.UpdateDataTableAsync(array, tableName);
             }
             catch (Exception ex)
@@ -300,69 +290,66 @@ namespace ODProxl.Services.impls
             }
         }
 
-        public string UpdateDataTable(string database, DataSet dsChangeDataSet, string tableName = "")
-            => Task.Run(() => UpdateDataTableAsync(database, dsChangeDataSet, tableName)).Result;
+        public string Save(string database, DataSet ds, string tableName = "")
+            => Task.Run(() => SaveAsync(database, ds, tableName)).Result;
 
-        public string CheckGrammar(string expression)
+        public string CheckSyntax(string expression)
             => "1 遠端連接暫時不能執行資料語法檢查!";
         #endregion
 
-        #region 參數化查詢完整實作
-        public async Task<string> ExecuteParameterizedQueryAsync(string database, ParameterizedQuery query)
+        #region 參數化版本（精簡名稱）
+        public async Task<string> ExecParamAsync(string database, ParameterizedQuery query)
         {
             string sql = query.ToParameterlessSQL();
-            return await ExecuteNonQueryAsync(database, sql);
+            return await ExecAsync(database, sql);
         }
 
-        public string ExecuteParameterizedQuery(string database, ParameterizedQuery query)
-            => Task.Run(() => ExecuteParameterizedQueryAsync(database, query)).Result;
+        public string ExecParam(string database, ParameterizedQuery query)
+            => Task.Run(() => ExecParamAsync(database, query)).Result;
 
-        public async Task<string> ExecuteScalarParameterizedQueryAsync(string database, ParameterizedQuery query)
+        public async Task<string> ScalarParamAsync(string database, ParameterizedQuery query)
         {
             string sql = query.ToParameterlessSQL();
-            return await ExecuteScalarAsync(database, sql);
+            return await ScalarAsync(database, sql);
         }
 
-        public string ExecuteScalarParameterizedQuery(string database, ParameterizedQuery query)
-            => Task.Run(() => ExecuteScalarParameterizedQueryAsync(database, query)).Result;
+        public string ScalarParam(string database, ParameterizedQuery query)
+            => Task.Run(() => ScalarParamAsync(database, query)).Result;
 
-        public async Task<DataSet> GetSelectResultParameterizedQueryAsync(string database, ParameterizedQuery query, string message = "", int runType = 0)
+        public async Task<DataSet> QueryParamAsync(string database, ParameterizedQuery query, string msg = "", int runType = 0)
         {
             string sql = query.ToParameterlessSQL();
-            return await GetSelectResultAsync(database, sql, message, runType);
+            return await QueryAsync(database, sql, msg, runType);
         }
 
-        public DataSet GetSelectResultParameterizedQuery(string database, ParameterizedQuery query, string message = "", int runType = 0)
-            => Task.Run(() => GetSelectResultParameterizedQueryAsync(database, query, message, runType)).Result;
+        public DataSet QueryParam(string database, ParameterizedQuery query, string msg = "", int runType = 0)
+            => Task.Run(() => QueryParamAsync(database, query, msg, runType)).Result;
 
         // 簡便重載
-        public async Task<string> ExecuteParameterizedQueryAsync(string database, string sql, params SqlParameter[] parameters)
+        public async Task<string> ExecParamAsync(string database, string sql, params SqlParameter[] parameters)
         {
             var query = new ParameterizedQuery(sql);
-            foreach (var p in parameters)
-                query.Parameters.Add(p);
-            return await ExecuteParameterizedQueryAsync(database, query);
+            foreach (var p in parameters) query.Parameters.Add(p);
+            return await ExecParamAsync(database, query);
         }
 
-        public async Task<string> ExecuteScalarParameterizedQueryAsync(string database, string sql, params SqlParameter[] parameters)
+        public async Task<string> ScalarParamAsync(string database, string sql, params SqlParameter[] parameters)
         {
             var query = new ParameterizedQuery(sql);
-            foreach (var p in parameters)
-                query.Parameters.Add(p);
-            return await ExecuteScalarParameterizedQueryAsync(database, query);
+            foreach (var p in parameters) query.Parameters.Add(p);
+            return await ScalarParamAsync(database, query);
         }
 
-        public async Task<DataSet> GetSelectResultParameterizedQueryAsync(string database, string sql, string message, int runType, params SqlParameter[] parameters)
+        public async Task<DataSet> QueryParamAsync(string database, string sql, string msg, int runType, params SqlParameter[] parameters)
         {
             var query = new ParameterizedQuery(sql);
-            foreach (var p in parameters)
-                query.Parameters.Add(p);
-            return await GetSelectResultParameterizedQueryAsync(database, query, message, runType);
+            foreach (var p in parameters) query.Parameters.Add(p);
+            return await QueryParamAsync(database, query, msg, runType);
         }
         #endregion
 
         #region 輔助方法
-        private void EnsureAuthenticated() // 保留舊版供內部使用（非同步版本優先）
+        private void EnsureAuthenticated()
         {
             if (!_isAuthenticated || _soapClient == null)
                 throw new InvalidOperationException("請先呼叫 InitializeAsync 或 Authenticate 完成登入。");

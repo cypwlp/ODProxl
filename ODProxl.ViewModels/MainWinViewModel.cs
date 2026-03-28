@@ -138,7 +138,7 @@ namespace ODProxl.ViewModels
                         new LeftMenuItem { Icon = MaterialIconKind.Magnify, Title = "实时檢測", ViewName = "Detect" },
                         new LeftMenuItem { Icon = MaterialIconKind.History, Title = "歷史數據", ViewName = "History" },
                         new LeftMenuItem { Icon = MaterialIconKind.SmokeDetector, Title = "自動檢測", ViewName = "AutoDet" },
-                        new LeftMenuItem { Icon = MaterialIconKind.GlobeModel, Title = "模型管理", ViewName = "OnnxModelMS", LimitUserName = new ObservableCollection<string> { "L5940", "L5126" } }
+                        new LeftMenuItem { Icon = MaterialIconKind.GlobeModel, Title = "模型管理", ViewName = "OnnxModelMSPage", LimitUserName = new ObservableCollection<string> { "L5940", "L5126" } }
                     }
                 },
                 new LeftMenuItem
