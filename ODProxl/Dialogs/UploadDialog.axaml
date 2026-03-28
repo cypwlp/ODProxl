@@ -1,0 +1,124 @@
+﻿<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:avalonia="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             mc:Ignorable="d"
+             d:DesignWidth="480"
+             d:DesignHeight="680"
+             x:Class="ODProxl.UploadDialog">
+
+    <Border Background="{DynamicResource MaterialCardBackgroundBrush}"
+            CornerRadius="16"
+            BoxShadow="0 8 32 0 #30000000"
+            Padding="0"
+            MaxWidth="480">
+
+        <!-- 可拖动标题栏 -->
+        <Grid RowDefinitions="Auto, *, Auto">
+            
+            <!-- 标题栏（支持拖动） -->
+            <Border Grid.Row="0" 
+                    Background="{DynamicResource MaterialCardBackgroundBrush}"
+                    CornerRadius="16,16,0,0"
+                    Padding="24,20,24,16"
+                    PointerPressed="TitleBar_PointerPressed">
+
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <avalonia:MaterialIcon Kind="CloudUpload"
+                                           Foreground="{DynamicResource MaterialPrimaryBrush}"
+                                           Width="32" Height="32" />
+                    <StackPanel Spacing="4" VerticalAlignment="Center">
+                        <TextBlock Text="发布新版本"
+                                   FontSize="20"
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource MaterialForegroundBrush}" />
+                        <TextBlock Text="请填写以下信息后确认上传"
+                                   FontSize="13"
+                                   Opacity="0.75" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- 表单内容区域（支持滚动） -->
+            <ScrollViewer Grid.Row="1"
+                          Padding="24,8,24,24"
+                          HorizontalScrollBarVisibility="Disabled"
+                          VerticalScrollBarVisibility="Auto">
+
+                <StackPanel Spacing="20">
+
+                    <!-- 版本号 -->
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="版本号 *" 
+                                   FontWeight="Medium" 
+                                   FontSize="14" />
+                        <TextBox Text="v1.0.1"
+                                 Watermark="例如：v1.2.3"
+                                 Classes="MaterialOutlined" />
+                    </StackPanel>
+
+                    <!-- DLL 扩展文件 -->
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="DLL 扩展文件" 
+                                   FontWeight="Medium" 
+                                   FontSize="14" />
+                        <TextBox Watermark="DLL 文件路径或清单文件（可选，支持多个用逗号分隔）"
+                                 Classes="MaterialOutlined" />
+                    </StackPanel>
+
+                    <!-- 更新说明 -->
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="更新说明 *" 
+                                   FontWeight="Medium" 
+                                   FontSize="14" />
+                        <TextBox AcceptsReturn="True"
+                                 TextWrapping="Wrap"
+                                 Height="120"
+                                 MinHeight="80"
+                                 Watermark="请详细描述本次版本的主要更新内容..."
+                                 Classes="MaterialOutlined" />
+                    </StackPanel>
+
+                    <!-- 代码说明 -->
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="代码说明" 
+                                   FontWeight="Medium" 
+                                   FontSize="14" />
+                        <TextBox AcceptsReturn="True"
+                                 TextWrapping="Wrap"
+                                 Height="100"
+                                 MinHeight="60"
+                                 Watermark="本次提交的代码变更记录（可选）..."
+                                 Classes="MaterialOutlined" />
+                    </StackPanel>
+
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- 按钮区域（固定在底部） -->
+            <Border Grid.Row="2"
+                    Background="{DynamicResource MaterialCardBackgroundBrush}"
+                    CornerRadius="0,0,16,16"
+                    Padding="24,16,24,24">
+
+                <StackPanel Orientation="Horizontal"
+                            HorizontalAlignment="Right"
+                            Spacing="12">
+                    
+                    <Button Content="取消"
+                            Command="{Binding CancelCommand}"
+                            Classes="MaterialOutlined"
+                            MinWidth="100" />
+
+                    <Button Content="确认发布"
+                            Command="{Binding ConfirmCommand}"
+                            Classes="MaterialFilled"
+                            MinWidth="130" />
+
+                </StackPanel>
+            </Border>
+
+        </Grid>
+    </Border>
+</UserControl>
