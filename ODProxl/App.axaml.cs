@@ -41,6 +41,7 @@ namespace ODProxl
             containerRegistry.Register<IUpdateService, UpdateService>();
             containerRegistry.RegisterDialog<UpdateDialog, UpdateDialogViewModel>();
             containerRegistry.RegisterDialog<AboutDialog,AboutDialogViewModel>();
+            containerRegistry.RegisterDialog<UploadDialog, UploadDialogViewModel>();
             containerRegistry.RegisterForNavigation<OnnxModelMSPage, OnnxModelMSPageViewModel>();
             containerRegistry.RegisterForNavigation<OnnxModelClassPage, OnnxModelClassPageViewModel>();
             containerRegistry.RegisterForNavigation<UserPreferencePage, UserPreferencePageViewModel>();
