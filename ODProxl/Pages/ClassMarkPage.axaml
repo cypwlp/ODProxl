@@ -8,7 +8,6 @@
              x:DataType="vm:ClassMarkPageViewModel"
              x:Class="ODProxl.ClassMarkPage">
     <Grid RowDefinitions="Auto,*,Auto">
-
         <!-- 頂部工具列：更大間距、更現代化 -->
         <Border Grid.Row="0"
                 Background="{DynamicResource MaterialPrimaryColor}"
@@ -63,7 +62,19 @@
                             <micons:MaterialIcon Kind="ContentSaveAll" Width="24" Height="24"/>
                             <TextBlock Text="儲存標註" VerticalAlignment="Center" FontSize="14"/>
                         </StackPanel>
-                    </Button> 
+                    </Button>
+
+                    <!-- 【新增】AI 自動標註按鈕 -->
+                    <Button Classes="FilledTonal" 
+                            Command="{Binding AutoAnnotateCommand}"
+                            MinWidth="168" CornerRadius="16"
+                            ToolTip.Tip="使用已啟用的 ONNX 模型自動標註目前圖片">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <micons:MaterialIcon Kind="AutoAwesome" Width="24" Height="24"/>
+                            <TextBlock Text="AI 自動標註" VerticalAlignment="Center" FontSize="14"/>
+                        </StackPanel>
+                    </Button>
+
                     <Button Classes="Outlined" Command="{Binding ResetZoomCommand}"
                             MinWidth="120" CornerRadius="16">
                         <StackPanel Orientation="Horizontal" Spacing="8">
@@ -80,7 +91,6 @@
                         </StackPanel>
                     </Button>
                 </StackPanel>
-
                 <!-- 右側狀態資訊 -->
                 <StackPanel DockPanel.Dock="Right"
                             Orientation="Horizontal"
@@ -91,17 +101,17 @@
                                 Width="40" Height="40" CornerRadius="12">
                             <micons:MaterialIcon Kind="ChevronLeft" Width="24" Height="24"/>
                         </Button>
-<TextBlock VerticalAlignment="Center"
-           FontWeight="SemiBold"
-           FontSize="15"
-           Foreground="{DynamicResource MaterialOnPrimaryColor}">
-    <TextBlock.Text>
-        <MultiBinding StringFormat="{}{0} / {1}" FallbackValue="— / —">
-            <Binding Path="CurrentImageIndex" />
-            <Binding Path="ExpectedImagePaths.Count" />
-        </MultiBinding>
-    </TextBlock.Text>
-</TextBlock>
+                        <TextBlock VerticalAlignment="Center"
+                                   FontWeight="SemiBold"
+                                   FontSize="15"
+                                   Foreground="{DynamicResource MaterialOnPrimaryColor}">
+                            <TextBlock.Text>
+                                <MultiBinding StringFormat="{}{0} / {1}" FallbackValue="— / —">
+                                    <Binding Path="CurrentImageIndex" />
+                                    <Binding Path="ExpectedImagePaths.Count" />
+                                </MultiBinding>
+                            </TextBlock.Text>
+                        </TextBlock>
                         <Button Classes="IconButton Outlined" Command="{Binding NextImageCommand}"
                                 Width="40" Height="40" CornerRadius="12">
                             <micons:MaterialIcon Kind="ChevronRight" Width="24" Height="24"/>
@@ -124,10 +134,8 @@
                 </StackPanel>
             </DockPanel>
         </Border>
-
         <!-- 主工作區 -->
         <Grid Grid.Row="1" ColumnDefinitions="*,320" Margin="24">
-
             <!-- 圖片顯示區：用 Border + Classes 模擬 Card -->
             <Border Grid.Column="0"
                     Classes="Card Elevation4"
@@ -161,7 +169,6 @@
                     </Border>
                 </ScrollViewer>
             </Border>
-
             <!-- 右側標籤列表：用 Border + Classes 模擬 Card -->
             <Border Grid.Column="1" Margin="24,0,0,0"
                     Classes="Card Elevation3"
@@ -204,7 +211,6 @@
                 </Grid>
             </Border>
         </Grid>
-
         <!-- 底部狀態列 -->
         <Border Grid.Row="2"
                 Background="{DynamicResource MaterialSurfaceVariantColor}"
@@ -215,6 +221,5 @@
                        Foreground="{DynamicResource MaterialOnSurfaceVariantColor}"
                        FontSize="14" FontWeight="Medium"/>
         </Border>
-
     </Grid>
 </UserControl>

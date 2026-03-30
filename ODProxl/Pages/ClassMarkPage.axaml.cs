@@ -36,7 +36,6 @@ public partial class ClassMarkPage : UserControl
         {
             _scrollViewer = this.FindControl<ScrollViewer>("ScrollViewer");
             _zoomContainer = this.FindControl<Border>("ZoomContainer");
-
             if (_zoomContainer != null)
             {
                 _scaleTransform = _zoomContainer.RenderTransform as ScaleTransform;
@@ -46,14 +45,12 @@ public partial class ClassMarkPage : UserControl
                     _scaleTransform.ScaleY = _zoomFactor;
                 }
             }
-
             var image = this.FindControl<Image>("ImageViewer");
             var canvas = this.FindControl<Canvas>("DrawingCanvas");
             if (image != null && canvas != null)
             {
                 vm.SetControls(image, canvas);
             }
-
             vm.RequestResetZoom += () =>
             {
                 _zoomFactor = 1.0;
@@ -75,31 +72,25 @@ public partial class ClassMarkPage : UserControl
     private void UpdateZoom(double delta, Point? mousePos = null)
     {
         if (_scaleTransform == null || _scrollViewer == null || _zoomContainer == null) return;
-
         double oldZoom = _zoomFactor;
         double newZoom = _zoomFactor + delta;
         newZoom = Math.Clamp(newZoom, MinZoom, MaxZoom);
         if (Math.Abs(newZoom - oldZoom) < 0.001) return;
-
         _zoomFactor = newZoom;
         _scaleTransform.ScaleX = _zoomFactor;
         _scaleTransform.ScaleY = _zoomFactor;
-
         if (mousePos.HasValue)
         {
             var oldOffset = _scrollViewer.Offset;
             var mouseInContentOld = new Point(mousePos.Value.X / oldZoom, mousePos.Value.Y / oldZoom);
             var mouseInContentNew = new Point(mousePos.Value.X / _zoomFactor, mousePos.Value.Y / _zoomFactor);
-
             var deltaOffset = new Vector(
                 (mouseInContentNew.X - mouseInContentOld.X) * _zoomFactor,
                 (mouseInContentNew.Y - mouseInContentOld.Y) * _zoomFactor);
-
             _scrollViewer.Offset = new Vector(
                 oldOffset.X + deltaOffset.X,
                 oldOffset.Y + deltaOffset.Y);
         }
-
         if (DataContext is ClassMarkPageViewModel vm)
         {
             vm.ZoomLevel = _zoomFactor;
@@ -126,7 +117,6 @@ public partial class ClassMarkPage : UserControl
         if (DataContext is not ClassMarkPageViewModel vm) return;
         var pixelPos = GetImagePixelPosition(e);
         var point = e.GetCurrentPoint(this);
-
         if (point.Properties.IsRightButtonPressed)
         {
             vm.OnPointerPressedRight(pixelPos);
