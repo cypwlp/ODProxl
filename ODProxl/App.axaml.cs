@@ -45,6 +45,7 @@ namespace ODProxl
             containerRegistry.RegisterForNavigation<OnnxModelMSPage, OnnxModelMSPageViewModel>();
             containerRegistry.RegisterForNavigation<OnnxModelClassPage, OnnxModelClassPageViewModel>();
             containerRegistry.RegisterForNavigation<UserPreferencePage, UserPreferencePageViewModel>();
+            containerRegistry.RegisterForNavigation<ClassMarkPage, ClassMarkPageViewModel>();
         }
 
         private async Task CheckForUpdatesAsync()
