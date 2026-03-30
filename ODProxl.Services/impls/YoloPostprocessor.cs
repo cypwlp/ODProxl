@@ -62,11 +62,7 @@ namespace ODProxl.Services.impls
 
         private OutputFormatInfo AnalyzeOutputs(IReadOnlyList<NamedOnnxValue> outputs)
         {
-            var allInfo = outputs
-                .Where(o => o.AsTensor<float>() != null)
-                .Select(o => $"{o.Name} → shape=[{string.Join(",", o.AsTensor<float>().Dimensions.ToArray())}]")
-                .ToList();
-
+            // 找出檢測輸出 (通常為 output0)
             var detection = outputs.FirstOrDefault(o => o.Name.Equals("output0", StringComparison.OrdinalIgnoreCase))
                          ?? outputs.Where(o => o.AsTensor<float>()?.Dimensions.Length == 3)
                                    .OrderByDescending(o => o.AsTensor<float>().Length)
@@ -75,12 +71,11 @@ namespace ODProxl.Services.impls
             if (detection == null)
                 throw new InvalidOperationException("找不到檢測輸出 tensor。");
 
-            // 修正：把 ReadOnlySpan<int> 轉成 array
             int[] shape = detection.AsTensor<float>().Dimensions.ToArray();
 
             if (shape.Length != 3)
             {
-                var shapeStr = string.Join("\n", allInfo);
+                var shapeStr = string.Join("\n", outputs.Select(o => $"{o.Name} → shape=[{string.Join(",", o.AsTensor<float>().Dimensions.ToArray())}]"));
                 throw new NotSupportedException($"不支援的輸出形狀: [{string.Join(",", shape)}]\n\n所有輸出：\n{shapeStr}");
             }
 
@@ -90,41 +85,60 @@ namespace ODProxl.Services.impls
                 IsSegmentation = false
             };
 
-            // 標準 YOLOv8 / YOLOv11 格式判斷 (nms=False)
             bool isHwc = shape[1] > 1000 && shape[2] < 300;
             int channels = isHwc ? shape[2] : shape[1];
-            info.NumClasses = channels - 4;
+            int numDetections = isHwc ? shape[1] : shape[2];
 
-            if (channels > 4 + 100) // 有 mask coefficients → 分割模型
+            // 尋找 proto 輸出 (分割模型特有)
+            var protoCandidate = outputs.FirstOrDefault(o =>
+                o.Name.Equals("output1", StringComparison.OrdinalIgnoreCase) ||
+                o.Name.Contains("proto", StringComparison.OrdinalIgnoreCase) ||
+                o.Name.Contains("mask", StringComparison.OrdinalIgnoreCase));
+
+            int maskChannels = 0;
+            if (protoCandidate != null)
             {
-                info.HasMaskCoeff = true;
-                info.NumClasses = channels - 4 - 32;
-                info.Format = isHwc ? OutputFormat.Yolov8HwcWithMask : OutputFormat.Yolov8Chw;
+                var protoShape = protoCandidate.AsTensor<float>().Dimensions.ToArray();
+                if (protoShape.Length == 4)
+                {
+                    maskChannels = protoShape[1];  // 假設形狀為 [1, C, H, W]
+                    info.MaskChannels = maskChannels;
+                    info.ProtoName = protoCandidate.Name;
+                    info.IsSegmentation = true;
+                }
             }
-            else if (isHwc)
+
+            // 根據是否為分割模型計算類別數與掩碼係數標誌
+            if (info.IsSegmentation)
             {
-                info.Format = OutputFormat.Yolov8Hwc;
+                info.NumClasses = channels - 4 - maskChannels;
+                info.HasMaskCoeff = true;
+            }
+            else
+            {
+                info.NumClasses = channels - 4;
+                info.HasMaskCoeff = false;
+            }
+
+            // 設定輸出格式
+            if (isHwc)
+            {
+                if (info.HasMaskCoeff)
+                    info.Format = OutputFormat.Yolov8HwcWithMask;
+                else
+                    info.Format = OutputFormat.Yolov8Hwc;
             }
             else
             {
                 info.Format = OutputFormat.Yolov8Chw;
             }
 
-            // 尋找 proto mask（分割模型）
-            var protoCandidate = outputs.FirstOrDefault(o =>
-                o.Name.Equals("output1", StringComparison.OrdinalIgnoreCase) ||
-                o.Name.Contains("proto", StringComparison.OrdinalIgnoreCase) ||
-                o.Name.Contains("mask", StringComparison.OrdinalIgnoreCase));
-
-            if (protoCandidate != null && info.HasMaskCoeff)
+            // 若為分割模型且 proto 已找到，額外儲存其高寬
+            if (info.IsSegmentation && protoCandidate != null)
             {
-                info.IsSegmentation = true;
-                info.ProtoName = protoCandidate.Name;
-
                 var protoShape = protoCandidate.AsTensor<float>().Dimensions.ToArray();
                 if (protoShape.Length == 4)
                 {
-                    info.MaskChannels = protoShape[1];
                     info.ProtoHeight = protoShape[2];
                     info.ProtoWidth = protoShape[3];
                 }
@@ -140,16 +154,17 @@ namespace ODProxl.Services.impls
 
             switch (format.Format)
             {
-                case OutputFormat.Yolov8Chw: // [1, 4+numClasses, N]
+                case OutputFormat.Yolov8Chw:
                     int numChw = dims[2];
                     for (int i = 0; i < numChw; i++)
                     {
-                        float[] pred = new float[4 + format.NumClasses];
-                        for (int j = 0; j < pred.Length; j++)
+                        int predLength = 4 + format.NumClasses + (format.HasMaskCoeff ? format.MaskChannels : 0);
+                        float[] pred = new float[predLength];
+                        for (int j = 0; j < predLength; j++)
                             pred[j] = tensor[0, j, i];
 
                         float[] box = pred.Take(4).ToArray();
-                        float[] scores = pred.Skip(4).ToArray();
+                        float[] scores = pred.Skip(4).Take(format.NumClasses).ToArray();
 
                         float maxScore = scores.Max();
                         if (maxScore < _confThreshold) continue;
@@ -167,7 +182,7 @@ namespace ODProxl.Services.impls
                         float width = w * _originalWidth / _inputWidth;
                         float height = h * _originalHeight / _inputHeight;
 
-                        boxes.Add(new BoundingBox
+                        var boxObj = new BoundingBox
                         {
                             X = x,
                             Y = y,
@@ -175,11 +190,19 @@ namespace ODProxl.Services.impls
                             Height = height,
                             Label = label,
                             Confidence = maxScore
-                        });
+                        };
+
+                        if (format.HasMaskCoeff)
+                        {
+                            float[] maskCoeffs = pred.Skip(4 + format.NumClasses).Take(format.MaskChannels).ToArray();
+                            boxObj.MaskCoeffs = maskCoeffs;
+                        }
+
+                        boxes.Add(boxObj);
                     }
                     break;
 
-                case OutputFormat.Yolov8Hwc: // [1, N, 4+numClasses]
+                case OutputFormat.Yolov8Hwc:
                     int numHwc = dims[1];
                     for (int i = 0; i < numHwc; i++)
                     {
