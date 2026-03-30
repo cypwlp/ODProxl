@@ -10,6 +10,8 @@
 	  <PackageReference Include="Prism.Avalonia" />
 	  <PackageReference Include="Prism.DryIoc.Avalonia" />
 	  <PackageReference Include="Material.Icons.Avalonia" />
+	  <PackageReference Include="Docnet.Core" />
+	  <PackageReference Include="SkiaSharp"/>
   </ItemGroup>
 
   <ItemGroup>

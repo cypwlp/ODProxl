@@ -26,6 +26,7 @@
     <PackageReference Include="Velopack" />
 	<PackageReference Include="DialogHost.Avalonia" />
     <PackageReference  Include="Material.Avalonia.DataGrid"/>
+   <PackageReference  Include="Docnet.Core"  />
   </ItemGroup>
 
   <ItemGroup>

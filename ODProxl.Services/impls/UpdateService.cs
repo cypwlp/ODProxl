@@ -22,7 +22,7 @@ namespace ODProxl.Services.impls
         private readonly IDialogService _dialogService;
         private static readonly HttpClient _httpClient = new HttpClient
         {
-            Timeout = TimeSpan.FromSeconds(15)
+            Timeout = TimeSpan.FromMinutes(5)
         };
 
         public UpdateService(IDialogService dialogService)
@@ -42,6 +42,7 @@ namespace ODProxl.Services.impls
             if (countryCode == "CN")
             {
                 await CheckAndUpdateForChinaAsync();
+                //await DLLUpdateAsync();
             }
             else
             {

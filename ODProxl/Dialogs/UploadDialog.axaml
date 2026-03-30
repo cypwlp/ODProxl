@@ -58,13 +58,23 @@
                                   Classes="MaterialOutlined" />
                     </StackPanel>
 
-                    <!-- DLL 文件 -->
-                    <StackPanel Spacing="6">
-                        <TextBlock Text="DLL 扩展文件" FontWeight="Medium" FontSize="14" />
-                        <TextBox Text="{Binding DllFiles, Mode=TwoWay}"
-                                 Watermark="DLL 文件路径或清单文件（多个用逗号分隔）"
-                                 Classes="MaterialOutlined" />
-                    </StackPanel>
+<!-- DLL 擴展文件 -->
+<StackPanel Spacing="6" Grid.IsSharedSizeScope="True">
+    <TextBlock Text="DLL 擴展文件" FontWeight="Medium" FontSize="14" />
+    <Grid ColumnDefinitions="*, Auto">
+        <TextBox Grid.Column="0"
+                 Text="{Binding DllFiles, Mode=TwoWay}"
+                 Watermark="DLL 文件路徑或清單文件（多個用逗號分隔）"
+                 Classes="MaterialOutlined" />
+        
+        <Button Grid.Column="1"
+                Content="選擇檔案"
+                Classes="MaterialOutlined"
+                Margin="8,0,0,0"
+                MinWidth="110"
+                Click="SelectDllFiles_Click" />
+    </Grid>
+</StackPanel>
 
                     <!-- 更新说明 -->
                     <StackPanel Spacing="6">
