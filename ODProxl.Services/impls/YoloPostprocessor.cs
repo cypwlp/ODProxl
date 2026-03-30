@@ -21,14 +21,18 @@ namespace ODProxl.Services.impls
 
         private OutputFormatInfo? _cachedFormat;
 
-        public YoloPostprocessor(float confThreshold = 0.30f, float iouThreshold = 0.45f,
+        public YoloPostprocessor(float confThreshold = 0.30f,
+                                 float iouThreshold = 0.45f,
                                  string[]? classNames = null,
-                                 int inputWidth = 640, int inputHeight = 640,
-                                 int originalWidth = 640, int originalHeight = 640)
+                                 int inputWidth = 640,
+                                 int inputHeight = 640,
+                                 int originalWidth = 640,
+                                 int originalHeight = 640)
         {
             _confThreshold = confThreshold;
             _iouThreshold = iouThreshold;
             _classNames = classNames ?? Array.Empty<string>();
+
             _inputWidth = inputWidth;
             _inputHeight = inputHeight;
             _originalWidth = originalWidth;
@@ -43,7 +47,7 @@ namespace ODProxl.Services.impls
             var detectionTensor = outputs.First(o => o.Name == format.DetectionName).AsTensor<float>();
             var boxes = ParseDetections(detectionTensor, format);
 
-            if (format.IsSegmentation)
+            if (format.IsSegmentation && !string.IsNullOrEmpty(format.ProtoName))
             {
                 var protoTensor = outputs.First(o => o.Name == format.ProtoName).AsTensor<float>();
                 boxes = ApplyMasks(boxes, protoTensor, format);
@@ -53,65 +57,31 @@ namespace ODProxl.Services.impls
                              .Select(b => FlattenMask(b.Mask))
                              .ToArray();
 
-            return new OnnxResult
-            {
-                Boxes = boxes,
-                Masks = masks
-            };
+            return new OnnxResult { Boxes = boxes, Masks = masks };
         }
 
         private OutputFormatInfo AnalyzeOutputs(IReadOnlyList<NamedOnnxValue> outputs)
         {
-            // 收集所有 float tensor 資訊（方便除錯）
             var allInfo = outputs
                 .Where(o => o.AsTensor<float>() != null)
-                .Select(o => new
-                {
-                    o.Name,
-                    Shape = o.AsTensor<float>().Dimensions.ToArray(),
-                    Size = o.AsTensor<float>().Length
-                })
+                .Select(o => $"{o.Name} → shape=[{string.Join(",", o.AsTensor<float>().Dimensions.ToArray())}]")
                 .ToList();
 
-            // ==================== 修正重點：正確識別 detection 與 proto ====================
-            // 1. 先找名稱為 output0 的 tensor（YOLOv11 標準 detection head）
-            var detection = outputs.FirstOrDefault(o => o.Name.Equals("output0", StringComparison.OrdinalIgnoreCase));
-
-            // 2. 如果沒有 output0，就找所有 3D tensor，並取元素數量最大的
-            if (detection == null)
-            {
-                var threeDTensors = outputs
-                    .Where(o => o.AsTensor<float>()?.Dimensions.Length == 3)
-                    .ToList();
-
-                if (threeDTensors.Count > 0)
-                {
-                    detection = threeDTensors.OrderByDescending(o => o.AsTensor<float>().Length).First();
-                }
-                else
-                {
-                    // 最後 fallback：取最大的 tensor
-                    detection = outputs
-                        .Where(o => o.AsTensor<float>() != null)
-                        .OrderByDescending(o => o.AsTensor<float>().Length)
-                        .FirstOrDefault();
-                }
-            }
+            var detection = outputs.FirstOrDefault(o => o.Name.Equals("output0", StringComparison.OrdinalIgnoreCase))
+                         ?? outputs.Where(o => o.AsTensor<float>()?.Dimensions.Length == 3)
+                                   .OrderByDescending(o => o.AsTensor<float>().Length)
+                                   .FirstOrDefault();
 
             if (detection == null)
-                throw new InvalidOperationException("模型沒有可用的 float tensor 輸出。");
+                throw new InvalidOperationException("找不到檢測輸出 tensor。");
 
-            var detectionShape = detection.AsTensor<float>().Dimensions.ToArray();
+            // 修正：把 ReadOnlySpan<int> 轉成 array
+            int[] shape = detection.AsTensor<float>().Dimensions.ToArray();
 
-            if (detectionShape.Length != 3)
+            if (shape.Length != 3)
             {
-                var shapeStr = string.Join("\n", allInfo.Select(x => $"   • {x.Name} → shape=[{string.Join(",", x.Shape)}]  size={x.Size}"));
-                throw new NotSupportedException(
-                    $"⚠️ 只支援 3D 檢測輸出（YOLO 標準格式）。\n\n" +
-                    $"目前最大/選擇的 tensor '{detection.Name}' 的形狀是 [{string.Join(",", detectionShape)}]\n\n" +
-                    $"模型所有輸出 tensor：\n{shapeStr}\n\n" +
-                    $"你的模型是 YOLO11s 匯出的 ONNX，請確認使用以下指令匯出：\n" +
-                    "yolo export model=yolo11s-seg.pt format=onnx opset=17");
+                var shapeStr = string.Join("\n", allInfo);
+                throw new NotSupportedException($"不支援的輸出形狀: [{string.Join(",", shape)}]\n\n所有輸出：\n{shapeStr}");
             }
 
             var info = new OutputFormatInfo
@@ -120,20 +90,15 @@ namespace ODProxl.Services.impls
                 IsSegmentation = false
             };
 
-            // ====================== 形狀判斷（支援 YOLOv11） ======================
-            int dim1 = detectionShape[1];
-            int dim2 = detectionShape[2];
-
-            bool isHwc = dim1 > 1000 && dim2 < 300;   // [1, N, C] 格式
-            int channels = isHwc ? dim2 : dim1;
-
+            // 標準 YOLOv8 / YOLOv11 格式判斷 (nms=False)
+            bool isHwc = shape[1] > 1000 && shape[2] < 300;
+            int channels = isHwc ? shape[2] : shape[1];
             info.NumClasses = channels - 4;
 
-            // 判斷是否為分割模型（有 mask coefficients）
-            if (channels > 4 + 100)
+            if (channels > 4 + 100) // 有 mask coefficients → 分割模型
             {
                 info.HasMaskCoeff = true;
-                info.NumClasses = channels - 4 - 32;   // YOLOv11-seg 通常是 32
+                info.NumClasses = channels - 4 - 32;
                 info.Format = isHwc ? OutputFormat.Yolov8HwcWithMask : OutputFormat.Yolov8Chw;
             }
             else if (isHwc)
@@ -145,7 +110,7 @@ namespace ODProxl.Services.impls
                 info.Format = OutputFormat.Yolov8Chw;
             }
 
-            // ====================== 找 proto mask（YOLOv11-seg 的 output1） ======================
+            // 尋找 proto mask（分割模型）
             var protoCandidate = outputs.FirstOrDefault(o =>
                 o.Name.Equals("output1", StringComparison.OrdinalIgnoreCase) ||
                 o.Name.Contains("proto", StringComparison.OrdinalIgnoreCase) ||
@@ -165,73 +130,43 @@ namespace ODProxl.Services.impls
                 }
             }
 
-            // ====================== 類別名稱 ======================
-            if (_classNames.Length != info.NumClasses || _classNames.Length == 0)
-            {
-                _classNames = Enumerable.Range(0, Math.Max(1, info.NumClasses))
-                                        .Select(i => $"class_{i}").ToArray();
-            }
-
             return info;
         }
 
         private List<BoundingBox> ParseDetections(Tensor<float> tensor, OutputFormatInfo format)
         {
-            var dims = tensor.Dimensions.ToArray();
             var boxes = new List<BoundingBox>();
+            var dims = tensor.Dimensions.ToArray();
 
             switch (format.Format)
             {
-                case OutputFormat.Yolov5: // [1, N, 85]
-                    int numBoxes = dims[1];
-                    for (int i = 0; i < numBoxes; i++)
-                    {
-                        float objConf = tensor[0, i, 4];
-                        if (objConf < _confThreshold) continue;
-                        float[] clsScores = new float[format.NumClasses];
-                        for (int j = 0; j < format.NumClasses; j++)
-                            clsScores[j] = tensor[0, i, 5 + j];
-                        float maxScore = clsScores.Max() * objConf;
-                        if (maxScore < _confThreshold) continue;
-                        int classId = Array.IndexOf(clsScores, clsScores.Max());
-                        string label = classId < _classNames.Length ? _classNames[classId] : classId.ToString();
-                        float x = tensor[0, i, 0] * _originalWidth;
-                        float y = tensor[0, i, 1] * _originalHeight;
-                        float w = tensor[0, i, 2] * _originalWidth;
-                        float h = tensor[0, i, 3] * _originalHeight;
-                        boxes.Add(new BoundingBox
-                        {
-                            X = x - w / 2,
-                            Y = y - h / 2,
-                            Width = w,
-                            Height = h,
-                            Label = label,
-                            Confidence = maxScore
-                        });
-                    }
-                    break;
-
-                case OutputFormat.Yolov8Chw: // [1, 4+numClasses, N] ← 你的模型是這個格式
-                    int numBoxesChw = dims[2];
-                    for (int i = 0; i < numBoxesChw; i++)
+                case OutputFormat.Yolov8Chw: // [1, 4+numClasses, N]
+                    int numChw = dims[2];
+                    for (int i = 0; i < numChw; i++)
                     {
                         float[] pred = new float[4 + format.NumClasses];
                         for (int j = 0; j < pred.Length; j++)
                             pred[j] = tensor[0, j, i];
+
                         float[] box = pred.Take(4).ToArray();
                         float[] scores = pred.Skip(4).ToArray();
+
                         float maxScore = scores.Max();
                         if (maxScore < _confThreshold) continue;
+
                         int classId = Array.IndexOf(scores, maxScore);
-                        string label = classId < _classNames.Length ? _classNames[classId] : classId.ToString();
+                        string label = classId < _classNames.Length ? _classNames[classId] : $"class_{classId}";
+
                         float cx = box[0];
                         float cy = box[1];
                         float w = box[2];
                         float h = box[3];
+
                         float x = (cx - w / 2) * _originalWidth / _inputWidth;
                         float y = (cy - h / 2) * _originalHeight / _inputHeight;
                         float width = w * _originalWidth / _inputWidth;
                         float height = h * _originalHeight / _inputHeight;
+
                         boxes.Add(new BoundingBox
                         {
                             X = x,
@@ -245,26 +180,32 @@ namespace ODProxl.Services.impls
                     break;
 
                 case OutputFormat.Yolov8Hwc: // [1, N, 4+numClasses]
-                    int numBoxesHwc = dims[1];
-                    for (int i = 0; i < numBoxesHwc; i++)
+                    int numHwc = dims[1];
+                    for (int i = 0; i < numHwc; i++)
                     {
                         float[] pred = new float[4 + format.NumClasses];
                         for (int j = 0; j < pred.Length; j++)
                             pred[j] = tensor[0, i, j];
+
                         float[] box = pred.Take(4).ToArray();
                         float[] scores = pred.Skip(4).ToArray();
+
                         float maxScore = scores.Max();
                         if (maxScore < _confThreshold) continue;
+
                         int classId = Array.IndexOf(scores, maxScore);
-                        string label = classId < _classNames.Length ? _classNames[classId] : classId.ToString();
+                        string label = classId < _classNames.Length ? _classNames[classId] : $"class_{classId}";
+
                         float cx = box[0];
                         float cy = box[1];
                         float w = box[2];
                         float h = box[3];
+
                         float x = (cx - w / 2) * _originalWidth / _inputWidth;
                         float y = (cy - h / 2) * _originalHeight / _inputHeight;
                         float width = w * _originalWidth / _inputWidth;
                         float height = h * _originalHeight / _inputHeight;
+
                         boxes.Add(new BoundingBox
                         {
                             X = x,
@@ -277,28 +218,34 @@ namespace ODProxl.Services.impls
                     }
                     break;
 
-                case OutputFormat.Yolov8HwcWithMask: // [1, N, 4+numClasses+32]
-                    int numBoxesMask = dims[1];
+                case OutputFormat.Yolov8HwcWithMask:
+                    int numMask = dims[1];
                     int maskCoeffDim = dims[2] - 4 - format.NumClasses;
-                    for (int i = 0; i < numBoxesMask; i++)
+                    for (int i = 0; i < numMask; i++)
                     {
                         float[] pred = new float[4 + format.NumClasses + maskCoeffDim];
                         for (int j = 0; j < pred.Length; j++)
                             pred[j] = tensor[0, i, j];
+
                         float[] box = pred.Take(4).ToArray();
                         float[] scores = pred.Skip(4).Take(format.NumClasses).ToArray();
+
                         float maxScore = scores.Max();
                         if (maxScore < _confThreshold) continue;
+
                         int classId = Array.IndexOf(scores, maxScore);
-                        string label = classId < _classNames.Length ? _classNames[classId] : classId.ToString();
+                        string label = classId < _classNames.Length ? _classNames[classId] : $"class_{classId}";
+
                         float cx = box[0];
                         float cy = box[1];
                         float w = box[2];
                         float h = box[3];
+
                         float x = (cx - w / 2) * _originalWidth / _inputWidth;
                         float y = (cy - h / 2) * _originalHeight / _inputHeight;
                         float width = w * _originalWidth / _inputWidth;
                         float height = h * _originalHeight / _inputHeight;
+
                         var boxObj = new BoundingBox
                         {
                             X = x,
@@ -308,6 +255,7 @@ namespace ODProxl.Services.impls
                             Label = label,
                             Confidence = maxScore
                         };
+
                         float[] maskCoeffs = pred.Skip(4 + format.NumClasses).ToArray();
                         boxObj.MaskCoeffs = maskCoeffs;
                         boxes.Add(boxObj);
@@ -417,7 +365,6 @@ namespace ODProxl.Services.impls
 
     internal enum OutputFormat
     {
-        Yolov5,
         Yolov8Chw,
         Yolov8Hwc,
         Yolov8HwcWithMask
