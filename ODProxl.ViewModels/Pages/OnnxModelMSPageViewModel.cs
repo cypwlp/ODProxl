@@ -320,6 +320,15 @@ namespace ODProxl.ViewModels.Pages
                 // 3. 插入类别记录到 sys_model_classes
                 if (resultList != null && resultList.Any())
                 {
+                    // 先清空原有记录
+                    string deleteClassSql = @"delete FROM sys_model_classes WHERE class_model_id = @ModelId";
+                   var res= await _dataService.ExecParamAsync("ODProxl", deleteClassSql, new SqlParameter("@ModelId", modelId));
+                    if (!int.TryParse(res, out int rowsAffected) || rowsAffected == 0)
+                    {
+                        Debug.WriteLine($"❌ 删除旧类别记录失败，model_id = {modelId}");
+                        return;
+                    }
+
                     string insertClassSql = @"
                 INSERT INTO sys_model_classes (class_model_id, class_suffix, class_name)
                 VALUES (@ModelId, @ClassSuffix, @ClassName)";
@@ -335,7 +344,6 @@ namespace ODProxl.ViewModels.Pages
                         await _dataService.ExecParamAsync("ODProxl", insertClassSql, classParams);
                     }
                 }
-                File.Delete(tempFilePath);
                 Debug.WriteLine($"✅ 数据库保存成功，model_id = {modelId}");
             }
             catch (Exception ex)
