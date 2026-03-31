@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/解决方案项/">
+    <File Path=".gitignore" />
     <File Path="Directory.Packages.props" />
   </Folder>
   <Project Path="ODProxl.EntityModels/ODProxl.EntityModels.csproj" Id="f9e59c20-002c-423f-8dbe-0867039a760e" />

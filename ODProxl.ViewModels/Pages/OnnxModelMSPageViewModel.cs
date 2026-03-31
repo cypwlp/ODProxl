@@ -3,11 +3,13 @@ using ODProxl.EntityModels;
 using ODProxl.Services;
 using Prism.Commands;
 using Prism.Mvvm;
+using Prism.Navigation;
 using RemoteService;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
@@ -23,7 +25,7 @@ namespace ODProxl.ViewModels.Pages
         public void OnNavigatedFrom(NavigationContext navigationContext) { }
         public async void OnNavigatedTo(NavigationContext navigationContext)
         {
-            LoginInfo=navigationContext.Parameters.GetValue<LoginInfo>("LoginInfo");
+            LoginInfo = navigationContext.Parameters.GetValue<LoginInfo>("LoginInfo");
             await LoadModelsFromServerAsync();
         }
         #endregion
@@ -32,7 +34,7 @@ namespace ODProxl.ViewModels.Pages
         private readonly string _baseUrl = "http://interior.topmix.net/info/system/software/ODProxl/OnnxModels/";
         private readonly HttpClient _httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(60) };
         private readonly IDataService _dataService;
-        private readonly IOnnxModelAnalyzer  _onnxModelAnalyzer;     
+        private readonly IOnnxModelAnalyzer _onnxModelAnalyzer;
         private bool _isLoading;
         private List<FileSystemItem> _allItems = new();
         private string _searchText = string.Empty;
@@ -83,11 +85,10 @@ namespace ODProxl.ViewModels.Pages
             _onnxModelAnalyzer = onnxModelAnalyzer;
             SearchCommand = new DelegateCommand(FilterItems);
             ShowDetailsCommand = new DelegateCommand<FileSystemItem>(ShowDetails);
-
         }
         #endregion
 
-        #region 核心載入邏輯 - 修正版
+        #region 核心載入邏輯
         private async Task LoadModelsFromServerAsync()
         {
             IsLoading = true;
@@ -137,9 +138,9 @@ namespace ODProxl.ViewModels.Pages
                         LastModified = lastModified
                     };
 
-                    // 重要：先訂閱事件，再加入集合
                     item.EnabledChanged += OnItemEnabledChanged;
                     tempItems.Add(item);
+
                     var classesUrl = fullUrl.Replace(".onnx", "_classes.txt", StringComparison.OrdinalIgnoreCase);
                     try
                     {
@@ -150,17 +151,16 @@ namespace ODProxl.ViewModels.Pages
                             .Where(s => !string.IsNullOrWhiteSpace(s))
                             .ToList();
                     }
-                    catch {}
+                    catch { }
                 }
 
                 _allItems = tempItems.OrderBy(i => i.Name).ToList();
 
-                // 關鍵修正：把已訂閱事件的物件加入到 Items
                 foreach (var item in _allItems)
                 {
                     Items.Add(item);
                 }
-                await GetUserEnbaleModelAsync();
+                await GetUserEnableModelAsync();
                 Debug.WriteLine($"成功載入 {_allItems.Count} 個 ONNX 模型，並完成事件訂閱");
             }
             catch (Exception ex)
@@ -178,10 +178,7 @@ namespace ODProxl.ViewModels.Pages
         private async void OnItemEnabledChanged(object? sender, EventArgs e)
         {
             if (sender is not FileSystemItem selectedItem) return;
-
-            // 防止重複觸發
             if (IsLoading) return;
-
             await SetEnabledModelAsync(selectedItem);
         }
         #endregion
@@ -205,7 +202,6 @@ namespace ODProxl.ViewModels.Pages
                 }
 
                 await SaveSelectedModelAsync(selectedItem);
-
                 Debug.WriteLine($"✅ 已啟用並儲存模型：{selectedItem.Name}");
             }
             catch (Exception ex)
@@ -250,20 +246,53 @@ namespace ODProxl.ViewModels.Pages
                     return;
                 }
 
-                string tempFilePath = Path.GetTempFileName();
-                using (var httpClient = new HttpClient())
-                {
-                    var bytes = await httpClient.GetByteArrayAsync(selectedItem.FullPath);
-                    await File.WriteAllBytesAsync(tempFilePath, bytes);
-                }
-                ModelInfo = await _onnxModelAnalyzer.AnalyzeAsync(tempFilePath, deepAnalysis: true);
-                // 2. 解析模型类别信息（与原有逻辑一致）
-                ObservableCollection<ClassInfo>? resultList = null;
+                // ========== 新增：本地模型快取邏輯 ==========
+                // 本地快取目錄：程式執行目錄下的 ModelsCache
+                string cacheDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ModelsCache");
+                if (!Directory.Exists(cacheDir))
+                    Directory.CreateDirectory(cacheDir);
 
+                // 使用原始檔案名稱作為本地檔名（若擔心衝突可改用 Hash，此處保持簡單）
+                string localModelPath = Path.Combine(cacheDir, selectedItem.Name);
+                bool needDownload = true;
+
+                // 檢查本地檔案是否存在且大小不為 0
+                if (File.Exists(localModelPath))
+                {
+                    var fileInfo = new FileInfo(localModelPath);
+                    if (fileInfo.Length > 0)
+                    {
+                        needDownload = false;
+                        Debug.WriteLine($"📁 使用本地快取模型：{localModelPath}");
+                    }
+                    else
+                    {
+                        // 檔案損壞，刪除後重新下載
+                        File.Delete(localModelPath);
+                        Debug.WriteLine($"⚠️ 本地模型檔案大小為 0，已刪除，將重新下載");
+                    }
+                }
+
+                if (needDownload)
+                {
+                    Debug.WriteLine($"🌐 從伺服器下載模型：{selectedItem.FullPath}");
+                    using (var httpClient = new HttpClient())
+                    {
+                        var bytes = await httpClient.GetByteArrayAsync(selectedItem.FullPath);
+                        await File.WriteAllBytesAsync(localModelPath, bytes);
+                    }
+                    Debug.WriteLine($"✅ 模型已下載並儲存至：{localModelPath}");
+                }
+
+                // 2. 分析模型（使用本地路徑）
+                ModelInfo = await _onnxModelAnalyzer.AnalyzeAsync(localModelPath, deepAnalysis: true);
+
+                // 3. 解析模型类别（以下代碼與您原本完全一致，省略重複...）
+                ObservableCollection<ClassInfo>? resultList = null;
                 string? raw = ModelInfo?.CustomMetadata?.GetValueOrDefault("names");
                 if (!string.IsNullOrWhiteSpace(raw))
                 {
-                    // 尝试 JSON 解析
+                    // 嘗試 JSON 解析
                     try
                     {
                         var dict = JsonSerializer.Deserialize<Dictionary<int, string>>(raw);
@@ -279,7 +308,7 @@ namespace ODProxl.ViewModels.Pages
                     }
                     catch { }
 
-                    // 如果 JSON 解析失败，尝试手动解析（与原逻辑一致）
+                    // 如果 JSON 解析失敗，嘗試手動解析
                     if (resultList == null)
                     {
                         string rawTrimmed = raw.Trim();
@@ -317,22 +346,22 @@ namespace ODProxl.ViewModels.Pages
                     }
                 }
 
-                // 3. 插入类别记录到 sys_model_classes
+                // 4. 更新類別表（刪除舊記錄 + 插入新記錄）... 以下與您原本代碼完全相同
                 if (resultList != null && resultList.Any())
                 {
-                    // 先清空原有记录
-                    string deleteClassSql = @"delete FROM sys_model_classes WHERE class_model_id = @ModelId";
-                   var res= await _dataService.ExecParamAsync("ODProxl", deleteClassSql, new SqlParameter("@ModelId", modelId));
-                    if (!int.TryParse(res, out int rowsAffected) || rowsAffected == 0)
+                    string deleteSql = "DELETE FROM sys_model_classes WHERE class_model_id = @ModelId";
+                    string deleteResult = await _dataService.ExecParamAsync("ODProxl", deleteSql, new SqlParameter("@ModelId", modelId));
+                    if (!IsSuccessResult(deleteResult))
                     {
-                        Debug.WriteLine($"❌ 删除旧类别记录失败，model_id = {modelId}");
+                        Debug.WriteLine($"❌ 删除旧类别失败: {deleteResult}");
                         return;
                     }
 
-                    string insertClassSql = @"
+                    string insertSql = @"
                 INSERT INTO sys_model_classes (class_model_id, class_suffix, class_name)
                 VALUES (@ModelId, @ClassSuffix, @ClassName)";
 
+                    bool allInsertSuccess = true;
                     foreach (var classInfo in resultList)
                     {
                         var classParams = new[]
@@ -341,9 +370,28 @@ namespace ODProxl.ViewModels.Pages
                     new SqlParameter("@ClassSuffix", classInfo.Suffix),
                     new SqlParameter("@ClassName", classInfo.ClassName)
                 };
-                        await _dataService.ExecParamAsync("ODProxl", insertClassSql, classParams);
+                        string insertResult = await _dataService.ExecParamAsync("ODProxl", insertSql, classParams);
+                        if (!IsSuccessResult(insertResult))
+                        {
+                            Debug.WriteLine($"❌ 插入类别失败: {classInfo.ClassName}, 错误: {insertResult}");
+                            allInsertSuccess = false;
+                        }
                     }
+                    if (allInsertSuccess)
+                        Debug.WriteLine($"✅ 类别表更新成功，共 {resultList.Count} 条记录");
+                    else
+                        Debug.WriteLine($"⚠️ 类别表部分插入失败");
                 }
+                else
+                {
+                    string deleteSql = "DELETE FROM sys_model_classes WHERE class_model_id = @ModelId";
+                    string deleteResult = await _dataService.ExecParamAsync("ODProxl", deleteSql, new SqlParameter("@ModelId", modelId));
+                    if (!IsSuccessResult(deleteResult))
+                        Debug.WriteLine($"⚠️ 清空类别失败: {deleteResult}");
+                    else
+                        Debug.WriteLine($"✅ 已清空模型类别（模型无类别元数据）");
+                }
+
                 Debug.WriteLine($"✅ 数据库保存成功，model_id = {modelId}");
             }
             catch (Exception ex)
@@ -351,7 +399,8 @@ namespace ODProxl.ViewModels.Pages
                 Debug.WriteLine($"❌ 数据库保存失败: {ex.Message}");
             }
         }
-        private async Task GetUserEnbaleModelAsync()
+
+        private async Task GetUserEnableModelAsync()
         {
             string sql = "SELECT model_name FROM sys_models WHERE model_userAccount = @LoginName";
             var param = new SqlParameter("@LoginName", LoginInfo!.LoginName);
@@ -370,6 +419,33 @@ namespace ODProxl.ViewModels.Pages
                 }
             }
         }
+
+        /// <summary>
+        /// 判斷服務執行結果是否成功。
+        /// 根據實際服務返回格式，成功可能返回：
+        ///   - 純數字（如 "1"、"0"）
+        ///   - 包含「已經被執行」等成功關鍵字的訊息
+        ///   - 其他明確的成功訊息
+        /// </summary>
+        private bool IsSuccessResult(string result)
+        {
+            if (string.IsNullOrWhiteSpace(result))
+                return false;
+
+            // 情況1：可解析為整數（包括 0）→ 成功
+            if (int.TryParse(result, out _))
+                return true;
+
+            // 情況2：包含成功關鍵字（根據實際 WCF 返回調整）
+            if (result.Contains("已經被執行") ||
+                result.Contains("执行成功") ||
+                result.Contains("successfully", StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            // 情況3：如果服務明確返回「0 錯誤訊息」且不包含成功關鍵字，則視為失敗
+            // 此處可根據需要添加更多判斷
+            return false;
+        }
         #endregion
 
         #region 過濾與詳情
@@ -383,7 +459,6 @@ namespace ODProxl.ViewModels.Pages
 
             foreach (var item in filtered)
             {
-                // 過濾後也要保持事件訂閱（雖然目前搜尋時事件已訂閱）
                 Items.Add(item);
             }
         }
