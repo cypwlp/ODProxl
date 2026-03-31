@@ -7,14 +7,13 @@
 	  <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\ODProxl.EntityModels\ODProxl.EntityModels.csproj" />
-    <ProjectReference Include="..\ODProxl.Utils\ODProxl.Utils.csproj" />
-    <PackageReference Include="Microsoft.ML.OnnxRuntime" />
-	<PackageReference Include="Velopack"/>
-	<PackageReference Include="SkiaSharp"/>
-    <PackageReference Include="OpenCvSharp4"/>
-	<PackageReference Include="OpenCvSharp4.runtime.win" />
-  </ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\ODProxl.EntityModels\ODProxl.EntityModels.csproj" />
+		<ProjectReference Include="..\ODProxl.Utils\ODProxl.Utils.csproj" />
+		<PackageReference Include="Microsoft.ML.OnnxRuntime" />
+		<PackageReference Include="Velopack"/>
+		<PackageReference Include="SkiaSharp"/>
+	</ItemGroup>
+
 
 </Project>
