@@ -4,8 +4,6 @@ using ODProxl.EntityModels;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace ODProxl.Services.impls
 {
@@ -21,6 +19,11 @@ namespace ODProxl.Services.impls
 
         private OutputFormatInfo? _cachedFormat;
 
+        // Letterbox 参数（与预处理保持一致）
+        private float _ratio;
+        private int _padX;
+        private int _padY;
+
         public YoloPostprocessor(float confThreshold = 0.30f,
                                  float iouThreshold = 0.45f,
                                  string[]? classNames = null,
@@ -32,13 +35,33 @@ namespace ODProxl.Services.impls
             _confThreshold = confThreshold;
             _iouThreshold = iouThreshold;
             _classNames = classNames ?? Array.Empty<string>();
-
             _inputWidth = inputWidth;
             _inputHeight = inputHeight;
             _originalWidth = originalWidth;
             _originalHeight = originalHeight;
+
+            // 计算初始 letterbox 参数
+            UpdateLetterboxParams(_originalWidth, _originalHeight);
         }
 
+        /// <summary>
+        /// 與 Preprocessor 完全一致的 letterbox 參數計算（關鍵！）
+        /// </summary>
+        public void UpdateLetterboxParams(int width, int height)
+        {
+            float ratio = Math.Min((float)_inputWidth / width, (float)_inputHeight / height);
+            _ratio = ratio;
+
+            // ★★★ 與 Preprocessor 完全一樣的 Round + padding 計算
+            int newW = (int)Math.Round(width * ratio);
+            int newH = (int)Math.Round(height * ratio);
+
+            int dw = _inputWidth - newW;
+            int dh = _inputHeight - newH;
+
+            _padX = (int)Math.Round(dw / 2.0f - 0.1f);
+            _padY = (int)Math.Round(dh / 2.0f - 0.1f);
+        }
         public OnnxResult Process(IReadOnlyList<NamedOnnxValue> outputs)
         {
             var format = _cachedFormat ?? AnalyzeOutputs(outputs);
@@ -62,7 +85,6 @@ namespace ODProxl.Services.impls
 
         private OutputFormatInfo AnalyzeOutputs(IReadOnlyList<NamedOnnxValue> outputs)
         {
-            // 找出檢測輸出 (通常為 output0)
             var detection = outputs.FirstOrDefault(o => o.Name.Equals("output0", StringComparison.OrdinalIgnoreCase))
                          ?? outputs.Where(o => o.AsTensor<float>()?.Dimensions.Length == 3)
                                    .OrderByDescending(o => o.AsTensor<float>().Length)
@@ -89,7 +111,6 @@ namespace ODProxl.Services.impls
             int channels = isHwc ? shape[2] : shape[1];
             int numDetections = isHwc ? shape[1] : shape[2];
 
-            // 尋找 proto 輸出 (分割模型特有)
             var protoCandidate = outputs.FirstOrDefault(o =>
                 o.Name.Equals("output1", StringComparison.OrdinalIgnoreCase) ||
                 o.Name.Contains("proto", StringComparison.OrdinalIgnoreCase) ||
@@ -101,14 +122,13 @@ namespace ODProxl.Services.impls
                 var protoShape = protoCandidate.AsTensor<float>().Dimensions.ToArray();
                 if (protoShape.Length == 4)
                 {
-                    maskChannels = protoShape[1];  // 假設形狀為 [1, C, H, W]
+                    maskChannels = protoShape[1];
                     info.MaskChannels = maskChannels;
                     info.ProtoName = protoCandidate.Name;
                     info.IsSegmentation = true;
                 }
             }
 
-            // 根據是否為分割模型計算類別數與掩碼係數標誌
             if (info.IsSegmentation)
             {
                 info.NumClasses = channels - 4 - maskChannels;
@@ -120,7 +140,6 @@ namespace ODProxl.Services.impls
                 info.HasMaskCoeff = false;
             }
 
-            // 設定輸出格式
             if (isHwc)
             {
                 if (info.HasMaskCoeff)
@@ -133,7 +152,6 @@ namespace ODProxl.Services.impls
                 info.Format = OutputFormat.Yolov8Chw;
             }
 
-            // 若為分割模型且 proto 已找到，額外儲存其高寬
             if (info.IsSegmentation && protoCandidate != null)
             {
                 var protoShape = protoCandidate.AsTensor<float>().Dimensions.ToArray();
@@ -151,6 +169,11 @@ namespace ODProxl.Services.impls
         {
             var boxes = new List<BoundingBox>();
             var dims = tensor.Dimensions.ToArray();
+
+            // 直接使用已更新的成员变量 _ratio, _padX, _padY
+            float ratio = _ratio;
+            int padX = _padX;
+            int padY = _padY;
 
             switch (format.Format)
             {
@@ -177,10 +200,11 @@ namespace ODProxl.Services.impls
                         float w = box[2];
                         float h = box[3];
 
-                        float x = (cx - w / 2) * _originalWidth / _inputWidth;
-                        float y = (cy - h / 2) * _originalHeight / _inputHeight;
-                        float width = w * _originalWidth / _inputWidth;
-                        float height = h * _originalHeight / _inputHeight;
+                        // 坐标转换：先减去填充，再除以缩放比例
+                        float x = (cx - padX) / ratio;
+                        float y = (cy - padY) / ratio;
+                        float width = w / ratio;
+                        float height = h / ratio;
 
                         var boxObj = new BoundingBox
                         {
@@ -224,10 +248,10 @@ namespace ODProxl.Services.impls
                         float w = box[2];
                         float h = box[3];
 
-                        float x = (cx - w / 2) * _originalWidth / _inputWidth;
-                        float y = (cy - h / 2) * _originalHeight / _inputHeight;
-                        float width = w * _originalWidth / _inputWidth;
-                        float height = h * _originalHeight / _inputHeight;
+                        float x = (cx - padX) / ratio;
+                        float y = (cy - padY) / ratio;
+                        float width = w / ratio;
+                        float height = h / ratio;
 
                         boxes.Add(new BoundingBox
                         {
@@ -264,10 +288,10 @@ namespace ODProxl.Services.impls
                         float w = box[2];
                         float h = box[3];
 
-                        float x = (cx - w / 2) * _originalWidth / _inputWidth;
-                        float y = (cy - h / 2) * _originalHeight / _inputHeight;
-                        float width = w * _originalWidth / _inputWidth;
-                        float height = h * _originalHeight / _inputHeight;
+                        float x = (cx - padX) / ratio;
+                        float y = (cy - padY) / ratio;
+                        float width = w / ratio;
+                        float height = h / ratio;
 
                         var boxObj = new BoundingBox
                         {

@@ -623,30 +623,26 @@ namespace ODProxl.ViewModels.Pages
 
             var localModelPath = await EnsureModelLocalAsync(enabledModel.FullPath);
 
-            // 若模型變更，重新建立 InferenceService
-            if (_inferenceService == null || _currentModelPath != localModelPath)
-            {
-                _inferenceService?.Dispose();
+            // 每次都重新创建服务，确保后处理器使用当前图片尺寸
+            using var tempSession = new InferenceSession(localModelPath);
+            var preprocessor = YoloPreprocessor.FromSession(tempSession);
 
-                using var tempSession = new InferenceSession(localModelPath);
-                var preprocessor = YoloPreprocessor.FromSession(tempSession);
+            var postprocessor = new YoloPostprocessor(
+                confThreshold: 0.30f,
+                iouThreshold: 0.45f,
+                classNames: null,
+                inputWidth: preprocessor.TargetWidth,
+                inputHeight: preprocessor.TargetHeight,
+                originalWidth: (int)ImagePixelWidth,
+                originalHeight: (int)ImagePixelHeight);
 
-                var postprocessor = new YoloPostprocessor(
-                    confThreshold: 0.30f,
-                    iouThreshold: 0.45f,
-                    classNames: null,
-                    inputWidth: preprocessor._targetWidth,
-                    inputHeight: preprocessor._targetHeight,
-                    originalWidth: (int)ImagePixelWidth,
-                    originalHeight: (int)ImagePixelHeight);
+            // 强制使用当前图像的 letterbox 参数（确保与预处理一致）
+            postprocessor.UpdateLetterboxParams((int)ImagePixelWidth, (int)ImagePixelHeight);
 
-                _inferenceService = new OnnxInferenceService(localModelPath, preprocessor, postprocessor);
-                _currentModelPath = localModelPath;
-            }
+            using var inferenceService = new OnnxInferenceService(localModelPath, preprocessor, postprocessor);
 
             StatusText = $"🤖 正在使用 {enabledModel.Name} 進行 AI 自動標註...";
-
-            var result = await _inferenceService.PredictAsync(_currentSkBitmap);
+            var result = await inferenceService.PredictAsync(_currentSkBitmap);
 
             int added = 0;
             foreach (var box in result.Boxes)
@@ -657,10 +653,10 @@ namespace ODProxl.ViewModels.Pages
                 {
                     IsPolygon = false,
                     Points = new List<Point>
-                    {
-                        new Point(box.X, box.Y),
-                        new Point(box.X + box.Width, box.Y + box.Height)
-                    },
+            {
+                new Point(box.X, box.Y),
+                new Point(box.X + box.Width, box.Y + box.Height)
+            },
                     ClassName = string.IsNullOrWhiteSpace(box.Label) ? "偵測物件" : box.Label
                 };
                 Annotations.Add(ann);
