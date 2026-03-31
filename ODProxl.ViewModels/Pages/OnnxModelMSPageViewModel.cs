@@ -10,6 +10,7 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Net.Http;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
@@ -23,8 +24,7 @@ namespace ODProxl.ViewModels.Pages
         public async void OnNavigatedTo(NavigationContext navigationContext)
         {
             LoginInfo=navigationContext.Parameters.GetValue<LoginInfo>("LoginInfo");
-        
-           await LoadModelsFromServerAsync();
+            await LoadModelsFromServerAsync();
         }
         #endregion
 
@@ -32,14 +32,26 @@ namespace ODProxl.ViewModels.Pages
         private readonly string _baseUrl = "http://interior.topmix.net/info/system/software/ODProxl/OnnxModels/";
         private readonly HttpClient _httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(60) };
         private readonly IDataService _dataService;
-
+        private readonly IOnnxModelAnalyzer  _onnxModelAnalyzer;     
         private bool _isLoading;
         private List<FileSystemItem> _allItems = new();
         private string _searchText = string.Empty;
         private LoginInfo? loginInfo;
+        private OnnxAnalysisResult? _modelInfo;
+        private ObservableCollection<ClassInfo> _classInfos;
         #endregion
 
         #region 屬性
+        public ObservableCollection<ClassInfo> ClassInfos
+        {
+            get => _classInfos;
+            set => SetProperty(ref _classInfos, value);
+        }
+        public OnnxAnalysisResult? ModelInfo
+        {
+            get => _modelInfo;
+            set => SetProperty(ref _modelInfo, value);
+        }
         public bool IsLoading
         {
             get => _isLoading;
@@ -65,11 +77,13 @@ namespace ODProxl.ViewModels.Pages
         #endregion
 
         #region 建構函式
-        public OnnxModelMSPageViewModel(IDataService dataService)
+        public OnnxModelMSPageViewModel(IDataService dataService, IOnnxModelAnalyzer onnxModelAnalyzer)
         {
             _dataService = dataService;
+            _onnxModelAnalyzer = onnxModelAnalyzer;
             SearchCommand = new DelegateCommand(FilterItems);
             ShowDetailsCommand = new DelegateCommand<FileSystemItem>(ShowDetails);
+
         }
         #endregion
 
@@ -208,35 +222,125 @@ namespace ODProxl.ViewModels.Pages
         {
             try
             {
-                string checkSql = "SELECT COUNT(*) FROM sys_models WHERE model_userAccount = @LoginName";
-                var checkParam = new SqlParameter("@LoginName", LoginInfo!.LoginName);
-
-                string countStr = await _dataService.ScalarParamAsync("ODProxl", checkSql, checkParam);
-                long count = 0;
-                long.TryParse(countStr?.Trim() ?? "0", out count);
-
-                string sql = count > 0
-                    ? @"UPDATE sys_models 
-                       SET model_name = @ModelName, 
-                           model_path = @ModelPath
-                       WHERE model_userAccount = @LoginName"
-                    : @"INSERT INTO sys_models (model_userAccount, model_name, model_path)
-                       VALUES (@LoginName, @ModelName, @ModelPath)";
+                // 1. 使用 MERGE 实现 UPSERT 并返回 model_id
+                string mergeSql = @"
+            MERGE INTO sys_models AS target
+            USING (SELECT @LoginName AS model_userAccount) AS source
+            ON target.model_userAccount = source.model_userAccount
+            WHEN MATCHED THEN
+                UPDATE SET 
+                    model_name = @ModelName,
+                    model_path = @ModelPath
+            WHEN NOT MATCHED THEN
+                INSERT (model_userAccount, model_name, model_path)
+                VALUES (@LoginName, @ModelName, @ModelPath)
+            OUTPUT INSERTED.model_id;";
 
                 var parameters = new[]
                 {
-                    new SqlParameter("@LoginName", LoginInfo.LoginName),
-                    new SqlParameter("@ModelName", selectedItem.Name ?? ""),
-                    new SqlParameter("@ModelPath", selectedItem.FullPath ?? "")
+            new SqlParameter("@LoginName", LoginInfo!.LoginName),
+            new SqlParameter("@ModelName", selectedItem.Name ?? ""),
+            new SqlParameter("@ModelPath", selectedItem.FullPath ?? "")
+        };
+
+                string? resultId = await _dataService.ScalarParamAsync("ODProxl", mergeSql, parameters);
+                if (!int.TryParse(resultId, out int modelId))
+                {
+                    Debug.WriteLine("❌ 无法获取 model_id");
+                    return;
+                }
+
+                string tempFilePath = Path.GetTempFileName();
+                using (var httpClient = new HttpClient())
+                {
+                    var bytes = await httpClient.GetByteArrayAsync(selectedItem.FullPath);
+                    await File.WriteAllBytesAsync(tempFilePath, bytes);
+                }
+                ModelInfo = await _onnxModelAnalyzer.AnalyzeAsync(tempFilePath, deepAnalysis: true);
+                // 2. 解析模型类别信息（与原有逻辑一致）
+                ObservableCollection<ClassInfo>? resultList = null;
+
+                string? raw = ModelInfo?.CustomMetadata?.GetValueOrDefault("names");
+                if (!string.IsNullOrWhiteSpace(raw))
+                {
+                    // 尝试 JSON 解析
+                    try
+                    {
+                        var dict = JsonSerializer.Deserialize<Dictionary<int, string>>(raw);
+                        if (dict != null)
+                        {
+                            resultList = new ObservableCollection<ClassInfo>();
+                            foreach (var kv in dict)
+                            {
+                                resultList.Add(new ClassInfo { Suffix = kv.Key, ClassName = kv.Value });
+                            }
+                            ClassInfos = resultList;
+                        }
+                    }
+                    catch { }
+
+                    // 如果 JSON 解析失败，尝试手动解析（与原逻辑一致）
+                    if (resultList == null)
+                    {
+                        string rawTrimmed = raw.Trim();
+                        if (rawTrimmed.StartsWith("{") && rawTrimmed.EndsWith("}"))
+                            rawTrimmed = rawTrimmed.Substring(1, rawTrimmed.Length - 2);
+
+                        var parts = rawTrimmed.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+                        resultList = new ObservableCollection<ClassInfo>();
+
+                        foreach (var part in parts)
+                        {
+                            var trimmedPart = part.Trim();
+                            var keyValue = trimmedPart.Split(new[] { ':' }, StringSplitOptions.RemoveEmptyEntries);
+                            if (keyValue.Length == 2 &&
+                                int.TryParse(keyValue[0].Trim(), out int suffix))
+                            {
+                                string className = keyValue[1].Trim();
+
+                                if (className.StartsWith("\"") && className.EndsWith("\""))
+                                    className = className.Substring(1, className.Length - 2);
+                                else if (className.StartsWith("'") && className.EndsWith("'"))
+                                    className = className.Substring(1, className.Length - 2);
+
+                                if (className.EndsWith("}"))
+                                    className = className.TrimEnd('}');
+
+                                resultList.Add(new ClassInfo
+                                {
+                                    Suffix = suffix,
+                                    ClassName = className
+                                });
+                            }
+                        }
+                        ClassInfos = resultList;
+                    }
+                }
+
+                // 3. 插入类别记录到 sys_model_classes
+                if (resultList != null && resultList.Any())
+                {
+                    string insertClassSql = @"
+                INSERT INTO sys_model_classes (class_model_id, class_suffix, class_name)
+                VALUES (@ModelId, @ClassSuffix, @ClassName)";
+
+                    foreach (var classInfo in resultList)
+                    {
+                        var classParams = new[]
+                        {
+                    new SqlParameter("@ModelId", modelId),
+                    new SqlParameter("@ClassSuffix", classInfo.Suffix),
+                    new SqlParameter("@ClassName", classInfo.ClassName)
                 };
-
-                await _dataService.ExecParamAsync("ODProxl", sql, parameters);
-
-                Debug.WriteLine($"✅ 資料庫儲存成功：{selectedItem.Name}");
+                        await _dataService.ExecParamAsync("ODProxl", insertClassSql, classParams);
+                    }
+                }
+                File.Delete(tempFilePath);
+                Debug.WriteLine($"✅ 数据库保存成功，model_id = {modelId}");
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"❌ 資料庫儲存失敗: {ex.Message}");
+                Debug.WriteLine($"❌ 数据库保存失败: {ex.Message}");
             }
         }
         private async Task GetUserEnbaleModelAsync()

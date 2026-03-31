@@ -39,6 +39,8 @@ namespace ODProxl
             containerRegistry.Register<IGeoLocationService, GeoLocationService>();
             containerRegistry.Register<IDialogService, DialogService>();
             containerRegistry.Register<IUpdateService, UpdateService>();
+            containerRegistry.Register<IOnnxModelAnalyzer,OnnxModelAnalyzer>();
+            containerRegistry.Register<IOnnxModelInspector, OnnxModelInspector>();          
             containerRegistry.RegisterDialog<UpdateDialog, UpdateDialogViewModel>();
             containerRegistry.RegisterDialog<AboutDialog,AboutDialogViewModel>();
             containerRegistry.RegisterDialog<UploadDialog, UploadDialogViewModel>();

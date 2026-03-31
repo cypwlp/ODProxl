@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace ODProxl.Services.impls
 {
-    internal class OnnxModelInspector : IOnnxModelInspector
+    public class OnnxModelInspector : IOnnxModelInspector
     {
         public Task<OnnxModelInfo> GetModelInfoAsync(InferenceSession session, string modelPath)
         {
