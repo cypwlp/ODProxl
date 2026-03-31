@@ -35,7 +35,7 @@
                     <Separator Width="1" Height="40" Margin="8,0"
                                VerticalAlignment="Center"
                                Background="{DynamicResource MaterialOutlineVariantColor}"/>
-                    <!-- 模式切換：移除 GroupName，靠 VM 互斥 -->
+                    <!-- 模式切換 -->
                     <ToggleButton Classes="Outlined"
                                   IsChecked="{Binding NotIsPolygonMode}"
                                   Command="{Binding SetRectModeCommand}"
@@ -56,6 +56,18 @@
                               MinWidth="160" MaxDropDownHeight="360"
                               Classes="FilledOutlined" CornerRadius="16"
                               VerticalAlignment="Center"/>
+                    
+                    <!-- 【新增】新增全域類別按鈕 -->
+                    <Button Classes="FilledTonal" 
+                            Command="{Binding AddNewClassCommand}"
+                            MinWidth="140" CornerRadius="16"
+                            ToolTip.Tip="新增全域類別（會同步到伺服器 classes.txt）">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <micons:MaterialIcon Kind="Plus" Width="24" Height="24"/>
+                            <TextBlock Text="新增類別" VerticalAlignment="Center" FontSize="14"/>
+                        </StackPanel>
+                    </Button>
+
                     <Button Classes="FilledTonal" Command="{Binding SaveAnnotationsCommand}"
                             MinWidth="148" CornerRadius="16">
                         <StackPanel Orientation="Horizontal" Spacing="10">
@@ -63,9 +75,7 @@
                             <TextBlock Text="儲存標註" VerticalAlignment="Center" FontSize="14"/>
                         </StackPanel>
                     </Button>
-
-                    <!-- 【新增】AI 自動標註按鈕 -->
-                    <Button Classes="FilledTonal" 
+                    <Button Classes="FilledTonal"
                             Command="{Binding AutoAnnotateCommand}"
                             MinWidth="168" CornerRadius="16"
                             ToolTip.Tip="使用已啟用的 ONNX 模型自動標註目前圖片">
@@ -74,7 +84,6 @@
                             <TextBlock Text="AI 自動標註" VerticalAlignment="Center" FontSize="14"/>
                         </StackPanel>
                     </Button>
-
                     <Button Classes="Outlined" Command="{Binding ResetZoomCommand}"
                             MinWidth="120" CornerRadius="16">
                         <StackPanel Orientation="Horizontal" Spacing="8">
@@ -136,7 +145,7 @@
         </Border>
         <!-- 主工作區 -->
         <Grid Grid.Row="1" ColumnDefinitions="*,320" Margin="24">
-            <!-- 圖片顯示區：用 Border + Classes 模擬 Card -->
+            <!-- 圖片顯示區 -->
             <Border Grid.Column="0"
                     Classes="Card Elevation4"
                     CornerRadius="24"
@@ -169,7 +178,7 @@
                     </Border>
                 </ScrollViewer>
             </Border>
-            <!-- 右側標籤列表：用 Border + Classes 模擬 Card -->
+            <!-- 右側標籤列表 -->
             <Border Grid.Column="1" Margin="24,0,0,0"
                     Classes="Card Elevation3"
                     CornerRadius="24"
@@ -183,7 +192,6 @@
                         <ItemsControl ItemsSource="{Binding Annotations}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <!-- 內部項目也用 Border 模擬小 Card -->
                                     <Border Margin="0,0,0,12"
                                             Classes="Card Elevation1"
                                             CornerRadius="16"

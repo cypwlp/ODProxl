@@ -12,6 +12,7 @@ using Microsoft.ML.OnnxRuntime;
 using ODProxl.EntityModels;
 using ODProxl.Services;
 using ODProxl.Services.impls;
+using ODProxl.ViewModels.Dialogs;     // ← 確保有這行
 using Prism.Mvvm;
 using RemoteService;
 using SkiaSharp;
@@ -34,10 +35,17 @@ namespace ODProxl.ViewModels.Pages
     {
         private readonly string _imagesBaseUrl = "http://interior.topmix.net/info/system/software/ODProxl/Anotaion/images/";
         private readonly string _labelsBaseUrl = "http://interior.topmix.net/info/system/software/ODProxl/Anotaion/labels/";
+        private readonly string _globalClassesUrl = "http://interior.topmix.net/info/system/software/ODProxl/classes.txt";
         private readonly string _localCachePath = Path.Combine(AppContext.BaseDirectory, "Cache", "Images");
         private readonly string _modelsCachePath = Path.Combine(AppContext.BaseDirectory, "Cache", "Models");
+
         private readonly HttpClient _httpClient;
         private readonly IDataService _dataService;
+        private readonly IDialogService _dialogService;   // ← 新增
+
+        private readonly Dictionary<int, string> _globalClassMap = new();
+        private readonly List<GlobalClass> _globalClasses = new();
+
         private Point _startPoint;
         private bool _isDragging;
         private Point _currentRectEnd;
@@ -57,14 +65,15 @@ namespace ODProxl.ViewModels.Pages
         private SKBitmap? _currentSkBitmap;
         private string? _currentModelPath;
         private LoginInfo? _loginInfo;
+
         public event Action? RequestResetZoom;
-        private List<string> _currentModelClasses = new();
 
         public LoginInfo? LoginInfo
         {
             get => _loginInfo;
             set => SetProperty(ref _loginInfo, value);
         }
+
         public bool IsPolygonMode
         {
             get => _isPolygonMode;
@@ -75,6 +84,7 @@ namespace ODProxl.ViewModels.Pages
             }
         }
         public bool NotIsPolygonMode => !IsPolygonMode;
+
         public double ImagePixelWidth { get => _imagePixelWidth; set => SetProperty(ref _imagePixelWidth, value); }
         public double ImagePixelHeight { get => _imagePixelHeight; set => SetProperty(ref _imagePixelHeight, value); }
         public int CurrentImageIndex { get => _currentImageIndex; set => SetProperty(ref _currentImageIndex, value); }
@@ -84,10 +94,11 @@ namespace ODProxl.ViewModels.Pages
         public string StatusText { get => _statusText; set => SetProperty(ref _statusText, value); }
         public string MousePositionText { get => _mousePositionText; set => SetProperty(ref _mousePositionText, value); }
         public string ModeText => IsPolygonMode ? "多邊形模式" : "矩形模式";
+
         public ObservableCollection<string> ExpectedImagePaths { get; } = new();
-        public ObservableCollection<ClassItem> Classes { get; } = new();
+        public ObservableCollection<GlobalClass> Classes { get; } = new();
         public ObservableCollection<Annotation> Annotations { get; } = new();
-        public ClassItem? SelectedClass { get; set; }
+        public GlobalClass? SelectedClass { get; set; }
 
         public DelegateCommand SetRectModeCommand { get; }
         public DelegateCommand SetPolygonModeCommand { get; }
@@ -98,11 +109,15 @@ namespace ODProxl.ViewModels.Pages
         public AsyncDelegateCommand NextImageCommand { get; }
         public DelegateCommand<Annotation> DeleteAnnotationCommand { get; }
         public AsyncDelegateCommand AutoAnnotateCommand { get; }
+        public DelegateCommand AddNewClassCommand { get; }
 
-        public ClassMarkPageViewModel(IDataService dataService, HttpClient httpClient)
+        // 【重要】建構子加入 IDialogService
+        public ClassMarkPageViewModel(IDataService dataService, HttpClient httpClient, IDialogService dialogService)
         {
             _dataService = dataService;
             _httpClient = httpClient;
+            _dialogService = dialogService;
+
             Directory.CreateDirectory(_localCachePath);
             Directory.CreateDirectory(_modelsCachePath);
 
@@ -122,13 +137,122 @@ namespace ODProxl.ViewModels.Pages
                 }
             });
             AutoAnnotateCommand = new AsyncDelegateCommand(RunAutoAnnotationAsync);
-
-            Classes.Add(new ClassItem { Name = "車牌" });
-            Classes.Add(new ClassItem { Name = "車身" });
-            Classes.Add(new ClassItem { Name = "輪胎" });
-            SelectedClass = Classes.FirstOrDefault();
+            AddNewClassCommand = new DelegateCommand(async () => await AddNewClassAsync());
         }
 
+        private async Task LoadGlobalClassesAsync()
+        {
+            _globalClassMap.Clear();
+            _globalClasses.Clear();
+            Classes.Clear();
+            try
+            {
+                var text = await _httpClient.GetStringAsync(_globalClassesUrl);
+                var lines = text.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+                for (int i = 0; i < lines.Length; i++)
+                {
+                    var name = lines[i].Trim();
+                    if (string.IsNullOrWhiteSpace(name)) continue;
+                    var gc = new GlobalClass { Id = i, Name = name };
+                    _globalClasses.Add(gc);
+                    _globalClassMap[i] = name;
+                    Classes.Add(gc);
+                }
+                SelectedClass = Classes.FirstOrDefault();
+                StatusText = $"已載入 {_globalClasses.Count} 個全域類別";
+            }
+            catch
+            {
+                Classes.Add(new GlobalClass { Id = 0, Name = "車牌" });
+                Classes.Add(new GlobalClass { Id = 1, Name = "車身" });
+                Classes.Add(new GlobalClass { Id = 2, Name = "輪胎" });
+                SelectedClass = Classes.FirstOrDefault();
+            }
+        }
+
+        private async Task AddNewClassAsync()
+        {
+            var newName = await ShowInputDialogAsync("新增全域類別", "請輸入新類別名稱（會立即同步到伺服器）", "");
+            if (string.IsNullOrWhiteSpace(newName)) return;
+
+            newName = newName.Trim();
+            if (_globalClassMap.Values.Any(n => n.Equals(newName, StringComparison.OrdinalIgnoreCase)))
+            {
+                StatusText = "⚠️ 此類別已存在";
+                return;
+            }
+
+            var newId = _globalClasses.Count;
+            var newGc = new GlobalClass { Id = newId, Name = newName };
+            _globalClasses.Add(newGc);
+            _globalClassMap[newId] = newName;
+            Classes.Add(newGc);
+            SelectedClass = newGc;
+
+            await UploadGlobalClassesAsync();
+            StatusText = $"✅ 已新增全域類別「{newName}」並同步至伺服器";
+        }
+
+        private async Task UploadGlobalClassesAsync()
+        {
+            var content = string.Join(Environment.NewLine, _globalClasses.Select(c => c.Name));
+            var stringContent = new StringContent(content, Encoding.UTF8, "application/octet-stream");
+
+            using var authClient = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
+            var byteArray = Encoding.ASCII.GetBytes("Administrator:wingfat@790811");
+            authClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(byteArray));
+
+            try
+            {
+                var response = await authClient.PutAsync(_globalClassesUrl, stringContent);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    Debug.WriteLine($"[成功] 已同步 classes.txt 到伺服器，共 {_globalClasses.Count} 個類別");
+                    // 可選：給使用者較溫和的提示
+                    // StatusText = $"✅ 已新增並同步類別到伺服器";
+                }
+                else
+                {
+                    var errorMsg = $"上傳 classes.txt 失敗，HTTP {(int)response.StatusCode} {response.ReasonPhrase}";
+                    Debug.WriteLine($"[錯誤] {errorMsg}");
+                    StatusText = $"⚠️ {errorMsg}";
+                }
+            }
+            catch (HttpRequestException httpEx)
+            {
+                Debug.WriteLine($"[HTTP 錯誤] 無法連線或上傳 classes.txt: {httpEx.Message}");
+                if (httpEx.InnerException != null)
+                    Debug.WriteLine($"內部錯誤: {httpEx.InnerException.Message}");
+
+                StatusText = $"❌ 無法連線到伺服器，請檢查網路或伺服器狀態";
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[嚴重錯誤] UploadGlobalClassesAsync 發生未預期錯誤:");
+                Debug.WriteLine(ex.ToString());           // ← 這一行會印出完整錯誤堆疊，開發時非常有用
+                StatusText = $"❌ 同步類別失敗: {ex.Message}";
+            }
+        }
+
+        // 【重點修正】使用 IDialogService 的正確呼叫方式
+        private async Task<string> ShowInputDialogAsync(string title, string message, string defaultText)
+        {
+            var parameters = new DialogParameters
+            {
+                { "Title", title },
+                { "Message", message },
+                { "DefaultText", defaultText }
+            };
+
+            var result = await _dialogService.ShowDialogAsync("InputDialog", parameters);
+
+            return result.Result == ButtonResult.OK
+                ? result.Parameters.GetValue<string>("Result") ?? ""
+                : "";
+        }
+
+        // 以下其餘程式碼完全不變（從 CancelCurrentPolygon 開始到結尾）
         private void CancelCurrentPolygon()
         {
             _currentPolygonPoints.Clear();
@@ -142,10 +266,12 @@ namespace ODProxl.ViewModels.Pages
             var pdfFiles = Directory.GetFiles(folderPath, "*.pdf", SearchOption.TopDirectoryOnly);
             await ProcessPdfFilesAsync(pdfFiles);
         }
+
         public async Task ProcessPdfFileAsync(string filePath)
         {
             await ProcessPdfFilesAsync(new[] { filePath });
         }
+
         private async Task ProcessPdfFilesAsync(IEnumerable<string> pdfPaths)
         {
             await Dispatcher.UIThread.InvokeAsync(() =>
@@ -156,6 +282,7 @@ namespace ODProxl.ViewModels.Pages
                 CurrentImageIndex = -1;
                 StatusText = "正在處理 PDF 文件...";
             });
+
             int totalProcessed = 0;
             foreach (var pdfPath in pdfPaths)
             {
@@ -213,6 +340,7 @@ namespace ODProxl.ViewModels.Pages
             await Dispatcher.UIThread.InvokeAsync(() =>
                 StatusText = $"處理完成，共 {totalProcessed} 張圖片（已自動同步至伺服器）");
         }
+
         private async Task<bool> ImageExistsOnServerAsync(string imageHttpUrl)
         {
             try
@@ -226,6 +354,7 @@ namespace ODProxl.ViewModels.Pages
                 return false;
             }
         }
+
         private async Task<byte[]> RenderPdfPageToPngAsync(string pdfPath, int pageIndex)
         {
             return await Task.Run(() =>
@@ -244,6 +373,7 @@ namespace ODProxl.ViewModels.Pages
                 return ms.ToArray();
             });
         }
+
         private async Task UploadImageToServerAsync(string imageHttpUrl, byte[] pngBytes)
         {
             var content = new ByteArrayContent(pngBytes);
@@ -252,43 +382,19 @@ namespace ODProxl.ViewModels.Pages
             if (!response.IsSuccessStatusCode)
                 throw new Exception($"上傳圖片失敗: HTTP {(int)response.StatusCode}");
         }
-        public async Task LoadClassesFromEnabledModelAsync()
-        {
-            var (_, modelClasses) = await GetEnabledModelWithClassesAsync();
-            _currentModelClasses = modelClasses;
-
-            await Dispatcher.UIThread.InvokeAsync(() =>
-            {
-                Classes.Clear();
-
-                if (modelClasses.Any())
-                {
-                    foreach (var name in modelClasses)
-                        Classes.Add(new ClassItem { Name = name });
-                }
-                else
-                {
-                    // 後備類別
-                    Classes.Add(new ClassItem { Name = "車牌" });
-                    Classes.Add(new ClassItem { Name = "車身" });
-                    Classes.Add(new ClassItem { Name = "輪胎" });
-                    Debug.WriteLine("⚠️ 使用預設類別（classes.txt 載入失敗）");
-                }
-
-                SelectedClass = Classes.FirstOrDefault();
-            });
-        }
 
         private string GetLabelHttpUrl(string imageHttpPath)
         {
             var fileName = Path.GetFileNameWithoutExtension(imageHttpPath) + ".json";
             return _labelsBaseUrl + fileName;
         }
+
         private async Task LoadAnnotationsForCurrentImageAsync()
         {
             if (CurrentImageIndex < 0 || CurrentImageIndex >= ExpectedImagePaths.Count) return;
             var imagePath = ExpectedImagePaths[CurrentImageIndex];
             var labelHttpUrl = GetLabelHttpUrl(imagePath);
+
             try
             {
                 var response = await _httpClient.GetAsync(labelHttpUrl);
@@ -303,10 +409,11 @@ namespace ODProxl.ViewModels.Pages
                         {
                             var ann = new Annotation
                             {
-                                ClassName = dto.ClassName,
+                                ClassId = dto.ClassId,
                                 IsPolygon = dto.IsPolygon,
                                 Points = dto.Points.Select(p => new Point(p[0], p[1])).ToList()
                             };
+                            ann.ClassName = _globalClassMap.TryGetValue(dto.ClassId, out var name) ? name : $"未知({dto.ClassId})";
                             Annotations.Add(ann);
                         }
                     }
@@ -318,6 +425,7 @@ namespace ODProxl.ViewModels.Pages
             }
             catch { }
         }
+
         private async Task SaveAnnotationsForCurrentImageAsync()
         {
             if (CurrentImageIndex < 0 || CurrentImageIndex >= ExpectedImagePaths.Count)
@@ -327,19 +435,21 @@ namespace ODProxl.ViewModels.Pages
             }
             var imagePath = ExpectedImagePaths[CurrentImageIndex];
             var labelHttpUrl = GetLabelHttpUrl(imagePath);
+
             try
             {
                 var dtos = Annotations.Select(ann => new AnnotationDto
                 {
-                    ClassName = ann.ClassName,
+                    ClassId = ann.ClassId,
                     IsPolygon = ann.IsPolygon,
                     Points = ann.Points.Select(p => new List<double> { p.X, p.Y }).ToList()
                 }).ToList();
+
                 string json = JsonSerializer.Serialize(dtos, new JsonSerializerOptions { WriteIndented = true });
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
                 var response = await _httpClient.PutAsync(labelHttpUrl, content);
                 StatusText = response.IsSuccessStatusCode
-                    ? "✅ 標註已成功儲存到伺服器"
+                    ? "✅ 標註已成功儲存（使用 class_id）"
                     : $"⚠️ 儲存失敗: HTTP {(int)response.StatusCode}";
             }
             catch (Exception ex)
@@ -366,6 +476,7 @@ namespace ODProxl.ViewModels.Pages
                 throw new Exception($"無法從伺服器取得圖片 {fileName}：{ex.Message}");
             }
         }
+
         public async Task LoadImageAsync(int index)
         {
             if (index < 0 || index >= ExpectedImagePaths.Count) return;
@@ -400,6 +511,7 @@ namespace ODProxl.ViewModels.Pages
             _imageControl = image;
             _canvas = canvas;
         }
+
         public void RedrawAllAnnotations()
         {
             if (_canvas == null) return;
@@ -488,6 +600,7 @@ namespace ODProxl.ViewModels.Pages
             }
             RedrawAllAnnotations();
         }
+
         public void OnPointerPressedRight(Point imagePixelPos)
         {
             if (IsPolygonMode)
@@ -506,6 +619,7 @@ namespace ODProxl.ViewModels.Pages
             }
             RedrawAllAnnotations();
         }
+
         public void OnPointerMoved(Point imagePixelPos)
         {
             MousePositionText = $"X: {imagePixelPos.X:F1} Y: {imagePixelPos.Y:F1}";
@@ -515,6 +629,7 @@ namespace ODProxl.ViewModels.Pages
                 _tempMovePoint = imagePixelPos;
             RedrawAllAnnotations();
         }
+
         public void OnPointerReleased(Point imagePixelPos)
         {
             if (!IsPolygonMode && _isDragging)
@@ -525,25 +640,29 @@ namespace ODProxl.ViewModels.Pages
             }
             RedrawAllAnnotations();
         }
+
         private void AddRectangleAnnotation()
         {
-            if (_startPoint == default || _currentRectEnd == default) return;
+            if (_startPoint == default || _currentRectEnd == default || SelectedClass == null) return;
             var ann = new Annotation
             {
                 Points = new List<Point> { _startPoint, _currentRectEnd },
                 IsPolygon = false,
-                ClassName = SelectedClass?.Name ?? "未知"
+                ClassId = SelectedClass.Id,
+                ClassName = SelectedClass.Name
             };
             Annotations.Add(ann);
         }
+
         private void FinishCurrentPolygon()
         {
-            if (_currentPolygonPoints.Count < 3) return;
+            if (_currentPolygonPoints.Count < 3 || SelectedClass == null) return;
             var ann = new Annotation
             {
                 Points = new List<Point>(_currentPolygonPoints),
                 IsPolygon = true,
-                ClassName = SelectedClass?.Name ?? "未知"
+                ClassId = SelectedClass.Id,
+                ClassName = SelectedClass.Name
             };
             Annotations.Add(ann);
             _currentPolygonPoints.Clear();
@@ -555,60 +674,36 @@ namespace ODProxl.ViewModels.Pages
         {
             if (_loginInfo?.LoginName == null)
                 return (null, new List<string>());
-
             try
             {
                 var param = new SqlParameter("@LoginName", _loginInfo.LoginName);
-
                 string? modelName = await _dataService.ScalarParamAsync("ODProxl",
                     "SELECT model_name FROM sys_models WHERE model_userAccount = @LoginName", param);
-
                 string? modelPath = await _dataService.ScalarParamAsync("ODProxl",
                     "SELECT model_path FROM sys_models WHERE model_userAccount = @LoginName", param);
-
                 if (string.IsNullOrWhiteSpace(modelPath))
-                {
-                    Debug.WriteLine("⚠️ 資料庫中沒有已啟用的模型");
                     return (null, new List<string>());
-                }
 
                 var model = new FileSystemItem { Name = modelName ?? "", FullPath = modelPath };
-
-                // 產生 classes.txt 的完整網址
                 var classesUrl = modelPath.Replace(".onnx", ".txt", StringComparison.OrdinalIgnoreCase);
-                Debug.WriteLine($"📄 正在載入 classes 檔案: {classesUrl}");
-
                 List<string> classes = new();
-
                 try
                 {
                     var text = await _httpClient.GetStringAsync(classesUrl);
-                    Debug.WriteLine($"✅ classes.txt 內容長度: {text.Length} 字元");
-
                     classes = text.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
                                   .Select(s => s.Trim())
                                   .Where(s => !string.IsNullOrWhiteSpace(s))
                                   .ToList();
-
-                    Debug.WriteLine($"✅ 成功載入 {classes.Count} 個類別");
                 }
-                catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
-                {
-                    Debug.WriteLine($"❌ classes.txt 檔案不存在: {classesUrl}");
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"❌ 讀取 classes.txt 失敗: {ex.Message}");
-                }
-
+                catch { }
                 return (model, classes);
             }
-            catch (Exception ex)
+            catch
             {
-                Debug.WriteLine($"❌ GetEnabledModelWithClassesAsync 發生錯誤: {ex.Message}");
                 return (null, new List<string>());
             }
         }
+
         private async Task<string> EnsureModelLocalAsync(string modelHttpUrl)
         {
             var fileName = Path.GetFileName(modelHttpUrl);
@@ -620,6 +715,7 @@ namespace ODProxl.ViewModels.Pages
             StatusText = $"✅ 模型下載完成";
             return localPath;
         }
+
         private async Task RunAutoAnnotationAsync()
         {
             if (CurrentImage == null || _currentSkBitmap == null)
@@ -627,63 +723,69 @@ namespace ODProxl.ViewModels.Pages
                 StatusText = "請先載入圖片";
                 return;
             }
-            var (enabledModel, modelClasses) = await GetEnabledModelWithClassesAsync();
+            var (enabledModel, modelClassNames) = await GetEnabledModelWithClassesAsync();
             if (enabledModel == null)
             {
                 StatusText = "❌ 沒有已啟用的 ONNX 模型，請先到「模型管理」頁面啟用一個模型";
                 return;
             }
             var localModelPath = await EnsureModelLocalAsync(enabledModel.FullPath);
+
             using var tempSession = new InferenceSession(localModelPath);
             var preprocessor = YoloPreprocessor.FromSession(tempSession);
             var postprocessor = new YoloPostprocessor(
                 confThreshold: 0.30f,
                 iouThreshold: 0.45f,
-                classNames: modelClasses.ToArray(),
+                classNames: modelClassNames.ToArray(),
                 inputWidth: preprocessor.TargetWidth,
                 inputHeight: preprocessor.TargetHeight,
                 originalWidth: (int)ImagePixelWidth,
                 originalHeight: (int)ImagePixelHeight);
+
             postprocessor.UpdateLetterboxParams((int)ImagePixelWidth, (int)ImagePixelHeight);
+
             using var inferenceService = new OnnxInferenceService(localModelPath, preprocessor, postprocessor);
+
             StatusText = $"🤖 正在使用 {enabledModel.Name} 進行 AI 自動標註...";
             var result = await inferenceService.PredictAsync(_currentSkBitmap);
+
             int added = 0;
             foreach (var box in result.Boxes)
             {
                 if (box.Confidence < 0.25f) continue;
+                int classId = -1;
+                if (_globalClassMap.Values.Any(n => n.Equals(box.Label, StringComparison.OrdinalIgnoreCase)))
+                {
+                    classId = _globalClassMap.First(kv => kv.Value.Equals(box.Label, StringComparison.OrdinalIgnoreCase)).Key;
+                }
                 var ann = new Annotation
                 {
                     IsPolygon = false,
+                    ClassId = classId,
+                    ClassName = classId >= 0 ? box.Label : "未知類別",
                     Points = new List<Point>
                     {
                         new Point(box.X, box.Y),
                         new Point(box.X + box.Width, box.Y + box.Height)
-                    },
-                    ClassName = string.IsNullOrWhiteSpace(box.Label) ? "偵測物件" : box.Label
+                    }
                 };
                 Annotations.Add(ann);
                 added++;
             }
+
             RedrawAllAnnotations();
-            StatusText = $"✅ AI 自動標註完成！新增 {added} 個矩形（可手動刪除或修正）";
+            StatusText = $"✅ AI 自動標註完成！新增 {added} 個矩形（全部使用全域 class_id）";
         }
 
         public bool IsNavigationTarget(NavigationContext navigationContext) => true;
         public void OnNavigatedFrom(NavigationContext navigationContext) { }
+
         public async void OnNavigatedTo(NavigationContext navigationContext)
         {
             if (navigationContext.Parameters.ContainsKey("LoginInfo"))
                 LoginInfo = navigationContext.Parameters.GetValue<LoginInfo>("LoginInfo");
-            try
-            {
-                await LoadClassesFromEnabledModelAsync();
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"載入失敗: {ex.Message}");
-                // 載入預設類別
-            }
+
+            await LoadGlobalClassesAsync();
         }
 
         public void Dispose()

@@ -23,6 +23,7 @@ namespace ODProxl.ViewModels.Pages
     public class OnnxModelMSPageViewModel : BindableBase, INavigationAware
     {
         private readonly string _baseUrl = "http://interior.topmix.net/info/system/software/ODProxl/OnnxModels/";
+        private readonly string _globalClassesUrl = "http://interior.topmix.net/info/system/software/ODProxl/classes.txt"; // 全域共用
         private readonly HttpClient _httpClient;
         private readonly IDataService _dataService;
         private readonly IOnnxModelAnalyzer _onnxModelAnalyzer;
@@ -68,10 +69,8 @@ namespace ODProxl.ViewModels.Pages
             _dataService = dataService;
             _onnxModelAnalyzer = onnxModelAnalyzer;
             _httpClient = httpClient;
-
             SearchCommand = new DelegateCommand(FilterItems);
             ShowDetailsCommand = new DelegateCommand<FileSystemItem>(ShowDetails);
-
             _sharedHttpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(60) };
             var byteArray = Encoding.ASCII.GetBytes("Administrator:wingfat@790811");
             _sharedHttpClient.DefaultRequestHeaders.Authorization =
@@ -81,11 +80,11 @@ namespace ODProxl.ViewModels.Pages
 
         public bool IsNavigationTarget(NavigationContext navigationContext) => true;
         public void OnNavigatedFrom(NavigationContext navigationContext) { }
+
         public async void OnNavigatedTo(NavigationContext navigationContext)
         {
             LoginInfo = navigationContext.Parameters.GetValue<LoginInfo>("LoginInfo");
             await LoadModelsFromServerAsync();
-
         }
 
         private async Task LoadModelsFromServerAsync()
@@ -189,6 +188,7 @@ namespace ODProxl.ViewModels.Pages
                 IsLoading = false;
             }
         }
+
         private async Task SaveSelectedModelAsync(FileSystemItem selectedItem)
         {
             ObservableCollection<ClassInfo>? resultList = null;
@@ -220,9 +220,7 @@ namespace ODProxl.ViewModels.Pages
                         await File.WriteAllBytesAsync(localModelPath, bytes);
                     }
                 }
-
                 ModelInfo = await _onnxModelAnalyzer.AnalyzeAsync(localModelPath, deepAnalysis: true);
-
                 string? raw = ModelInfo?.CustomMetadata?.GetValueOrDefault("names");
                 if (!string.IsNullOrWhiteSpace(raw))
                 {
@@ -271,7 +269,6 @@ namespace ODProxl.ViewModels.Pages
                         ClassInfos = resultList;
                     }
                 }
-
                 if (resultList != null && resultList.Any())
                 {
                     string classesContent = GenerateClassesFileContent(resultList);
@@ -305,12 +302,10 @@ namespace ODProxl.ViewModels.Pages
                 {
                     return;
                 }
-
                 if (resultList != null && resultList.Any())
                 {
                     string deleteSql = "DELETE FROM sys_model_classes WHERE class_model_id = @ModelId";
                     await _dataService.ExecParamAsync("ODProxl", deleteSql, new SqlParameter("@ModelId", modelId));
-
                     string insertSql = @"
                 INSERT INTO sys_model_classes (class_model_id, class_suffix, class_name)
                 VALUES (@ModelId, @ClassSuffix, @ClassName)";
@@ -336,6 +331,7 @@ namespace ODProxl.ViewModels.Pages
                 Debug.WriteLine($"❌ 数据库保存失败: {ex.Message}");
             }
         }
+
         private string GenerateClassesFileContent(IEnumerable<ClassInfo> classInfos)
         {
             if (classInfos == null || !classInfos.Any())
@@ -343,18 +339,24 @@ namespace ODProxl.ViewModels.Pages
             var orderedClasses = classInfos.OrderBy(c => c.Suffix);
             return string.Join(Environment.NewLine, orderedClasses.Select(c => c.ClassName));
         }
+
         private async Task UploadClassesFileAsync(string modelName, string content)
         {
             string classesFileName = Path.ChangeExtension(modelName, ".txt");
             string classesUrl = new Uri(new Uri(_baseUrl), classesFileName).ToString();
             string finalContent = string.IsNullOrWhiteSpace(content) ? "# No classes" : content;
+
             try
             {
                 var stringContent = new StringContent(finalContent, Encoding.UTF8, "application/octet-stream");
-                var response = await _sharedHttpClient.PutAsync(classesUrl, stringContent);
+                // 上傳 per-model（相容舊模型）
+                await _sharedHttpClient.PutAsync(classesUrl, stringContent);
+                // 同時覆蓋全域 classes.txt（核心：所有模型共用同一份）
+                await _sharedHttpClient.PutAsync(_globalClassesUrl, stringContent);
             }
             catch { }
         }
+
         private async Task GetUserEnableModelAsync()
         {
             string sql = "SELECT model_name FROM sys_models WHERE model_userAccount = @LoginName";
@@ -381,6 +383,7 @@ namespace ODProxl.ViewModels.Pages
                 Items.Add(item);
             }
         }
+
         private void ShowDetails(FileSystemItem? item)
         {
             if (item == null) return;

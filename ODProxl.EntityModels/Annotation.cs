@@ -6,7 +6,9 @@ namespace ODProxl.EntityModels
     {
         public List<Point> Points { get; set; } = new();
         public bool IsPolygon { get; set; }
-        public string ClassName { get; set; } = "";
+        public int ClassId { get; set; } = -1;           // 只存 ID
+        public string ClassName { get; set; } = "";      // 僅用於顯示
+
         public string DisplayText =>
             IsPolygon
                 ? $"多邊形 ({Points.Count} 點) - {ClassName}"
@@ -28,6 +30,6 @@ namespace ODProxl.EntityModels
     {
         public List<List<double>> Points { get; set; } = new();
         public bool IsPolygon { get; set; }
-        public string ClassName { get; set; } = "";
+        public int ClassId { get; set; }        // 只存 ID
     }
 }

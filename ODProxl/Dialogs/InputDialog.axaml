@@ -1,0 +1,62 @@
+﻿<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:dialogs="using:ODProxl.ViewModels.Dialogs"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:micons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             mc:Ignorable="d" d:DesignWidth="460" d:DesignHeight="280"
+             x:DataType="dialogs:InputDialogViewModel"
+             x:Class="ODProxl.Dialogs.InputDialog">
+
+    <Border CornerRadius="28"
+            Background="{DynamicResource MaterialSurfaceColor}"
+            BoxShadow="0 12 40 0 #33000000"
+            Padding="40,32">
+        <StackPanel Spacing="28">
+            <!-- 標題 + Icon -->
+            <StackPanel Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
+                <micons:MaterialIcon Kind="PlusCircleOutline"
+                                     Width="36" Height="36"
+                                     Foreground="{DynamicResource MaterialPrimaryColor}"/>
+                <TextBlock Text="{Binding Title}"
+                           FontSize="22"
+                           FontWeight="SemiBold"
+                           VerticalAlignment="Center"
+                           Foreground="{DynamicResource MaterialOnSurfaceColor}"/>
+            </StackPanel>
+
+            <!-- 提示文字 -->
+            <TextBlock Text="{Binding Message}"
+                       FontSize="15"
+                       TextWrapping="Wrap"
+                       Foreground="{DynamicResource MaterialOnSurfaceVariantColor}"
+                       LineHeight="1.4"/>
+
+            <!-- 輸入框 -->
+            <TextBox Text="{Binding DefaultText, Mode=TwoWay}"
+                     Watermark="請輸入類別名稱（例如：新款車牌）"
+                     FontSize="16"
+                     Classes="Filled"
+                     CornerRadius="16"
+                     Padding="16,14"
+                     MinHeight="52"
+                     MaxLines="1"/>
+
+            <!-- 按鈕 -->
+            <StackPanel Orientation="Horizontal"
+                        HorizontalAlignment="Right"
+                        Spacing="12">
+                <Button Classes="Outlined"
+                        Content="取消"
+                        MinWidth="110"
+                        CornerRadius="16"
+                        Command="{Binding CancelCommand}"/>
+                <Button Classes="Filled"
+                        Content="確定新增"
+                        MinWidth="110"
+                        CornerRadius="16"
+                        Command="{Binding OkCommand}"/>
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</UserControl>
