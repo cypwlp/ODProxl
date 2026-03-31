@@ -199,12 +199,14 @@ namespace ODProxl.Services.impls
                         float cy = box[1];
                         float w = box[2];
                         float h = box[3];
-
-                        // 坐标转换：先减去填充，再除以缩放比例
-                        float x = (cx - padX) / ratio;
-                        float y = (cy - padY) / ratio;
-                        float width = w / ratio;
-                        float height = h / ratio;
+                        float center_x_orig = (cx - padX) / ratio;
+                        float center_y_orig = (cy - padY) / ratio;
+                        float w_orig = w / ratio;
+                        float h_orig = h / ratio;
+                        float x = center_x_orig - w_orig / 2f;  
+                        float y = center_y_orig - h_orig / 2f;
+                        float width = w_orig;
+                        float height = h_orig;
 
                         var boxObj = new BoundingBox
                         {
