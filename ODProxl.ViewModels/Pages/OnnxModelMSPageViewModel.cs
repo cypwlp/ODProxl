@@ -20,10 +20,11 @@ namespace ODProxl.ViewModels.Pages
         #region INavigationAware
         public bool IsNavigationTarget(NavigationContext navigationContext) => true;
         public void OnNavigatedFrom(NavigationContext navigationContext) { }
-        public void OnNavigatedTo(NavigationContext navigationContext)
+        public async void OnNavigatedTo(NavigationContext navigationContext)
         {
             LoginInfo=navigationContext.Parameters.GetValue<LoginInfo>("LoginInfo");
-            _ = LoadModelsFromServerAsync();
+        
+           await LoadModelsFromServerAsync();
         }
         #endregion
 
@@ -125,6 +126,17 @@ namespace ODProxl.ViewModels.Pages
                     // 重要：先訂閱事件，再加入集合
                     item.EnabledChanged += OnItemEnabledChanged;
                     tempItems.Add(item);
+                    var classesUrl = fullUrl.Replace(".onnx", "_classes.txt", StringComparison.OrdinalIgnoreCase);
+                    try
+                    {
+                        var classesText = await _httpClient.GetStringAsync(classesUrl);
+                        item.ModelClasses = classesText
+                            .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                            .Select(s => s.Trim())
+                            .Where(s => !string.IsNullOrWhiteSpace(s))
+                            .ToList();
+                    }
+                    catch {}
                 }
 
                 _allItems = tempItems.OrderBy(i => i.Name).ToList();
@@ -134,7 +146,7 @@ namespace ODProxl.ViewModels.Pages
                 {
                     Items.Add(item);
                 }
-
+                await GetUserEnbaleModelAsync();
                 Debug.WriteLine($"成功載入 {_allItems.Count} 個 ONNX 模型，並完成事件訂閱");
             }
             catch (Exception ex)
@@ -225,6 +237,25 @@ namespace ODProxl.ViewModels.Pages
             catch (Exception ex)
             {
                 Debug.WriteLine($"❌ 資料庫儲存失敗: {ex.Message}");
+            }
+        }
+        private async Task GetUserEnbaleModelAsync()
+        {
+            string sql = "SELECT model_name FROM sys_models WHERE model_userAccount = @LoginName";
+            var param = new SqlParameter("@LoginName", LoginInfo!.LoginName);
+            var result = await _dataService.ScalarParamAsync("ODProxl", sql, param);
+            if (!string.IsNullOrWhiteSpace(result))
+            {
+                var matchedItem = Items.FirstOrDefault(i => i.Name.Equals(result.Trim(), StringComparison.OrdinalIgnoreCase));
+                if (matchedItem != null)
+                {
+                    matchedItem.IsEnabled = true;
+                    Debug.WriteLine($"✅ 已設定使用者啟用模型：{matchedItem.Name}");
+                }
+                else
+                {
+                    Debug.WriteLine($"⚠️ 使用者啟用模型 '{result}' 不在列表中");
+                }
             }
         }
         #endregion

@@ -125,30 +125,18 @@ namespace ODProxl.ViewModels
 
         private void LoadMenu()
         {
-            // 你的左側 TreeView 菜單保持不變
             MenuItems = new ObservableCollection<LeftMenuItem>
             {
                 new LeftMenuItem { Icon = MaterialIconKind.Home, Title = "首页", ViewName = "HomePage", LimitUserName = ["AllUser"] },
                 new LeftMenuItem
                 {
                     Icon = MaterialIconKind.Database,
-                    Title = "檢測系統",
+                    Title = "檢測管理",
                     SubItems = new ObservableCollection<LeftMenuItem>
                     {
-                        new LeftMenuItem { Icon = MaterialIconKind.Magnify, Title = "实时檢測", ViewName = "Detect" },
-                        new LeftMenuItem { Icon = MaterialIconKind.History, Title = "歷史數據", ViewName = "History" },
-                        new LeftMenuItem { Icon = MaterialIconKind.SmokeDetector, Title = "自動檢測", ViewName = "ClassMarkPage" },
-                        new LeftMenuItem { Icon = MaterialIconKind.GlobeModel, Title = "模型管理", ViewName = "OnnxModelMSPage", LimitUserName = new ObservableCollection<string> { "L5940", "L5126" } }
-                    }
-                },
-                new LeftMenuItem
-                {
-                    Icon = MaterialIconKind.ChatProcessing,
-                    Title = "流程管理",
-                    SubItems = new ObservableCollection<LeftMenuItem>
-                    {
-                        new LeftMenuItem { Icon = MaterialIconKind.FileTree, Title = "當前流程", ViewName = "Process" },
-                        new LeftMenuItem { Icon = MaterialIconKind.FormatListBulleted, Title = "工單列表", ViewName = "WorkOrder" }
+                        new LeftMenuItem { Icon = MaterialIconKind.SmokeDetector, Title = "數據標註", ViewName = "ClassMarkPage" },
+                        new LeftMenuItem { Icon = MaterialIconKind.GlobeModel, Title = "模型管理", ViewName = "OnnxModelMSPage", LimitUserName = new ObservableCollection<string> { "L5940", "L5126" } },
+                        new LeftMenuItem { Icon = MaterialIconKind.Magnify, Title = "实时檢測", ViewName = "Detect" }
                     }
                 },
                 new LeftMenuItem
@@ -158,7 +146,7 @@ namespace ODProxl.ViewModels
                     SubItems = new ObservableCollection<LeftMenuItem>
                     {
                         new LeftMenuItem { Icon = MaterialIconKind.Cog, Title = "檢測設置", ViewName = "Settings" },
-                        new LeftMenuItem { Icon = MaterialIconKind.Account, Title = "個人中心", ViewName = "Personal" }
+                        new LeftMenuItem { Icon = MaterialIconKind.Account, Title = "個人中心", ViewName = "UserPreferencePage" }
                     }
                 }
             };

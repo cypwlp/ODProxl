@@ -65,6 +65,8 @@ namespace ODProxl.ViewModels.Pages
         private LoginInfo? _loginInfo;
 
         public event Action? RequestResetZoom;
+        private List<string> _currentModelClasses = new();
+
         #endregion
 
         #region Properties
@@ -280,6 +282,20 @@ namespace ODProxl.ViewModels.Pages
             var response = await _httpClient.PutAsync(imageHttpUrl, content);
             if (!response.IsSuccessStatusCode)
                 throw new Exception($"上傳圖片失敗: HTTP {(int)response.StatusCode} - 請確認帳號密碼是否正確");
+        }
+
+        public async Task LoadClassesFromEnabledModelAsync()
+        {
+            var (_, modelClasses) = await GetEnabledModelWithClassesAsync();
+            _currentModelClasses = modelClasses;
+
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                Classes.Clear();
+                foreach (var name in _currentModelClasses)
+                    Classes.Add(new ClassItem { Name = name });
+                SelectedClass = Classes.FirstOrDefault();
+            });
         }
         #endregion
 
@@ -574,22 +590,49 @@ namespace ODProxl.ViewModels.Pages
         #endregion
 
         #region AI 自動標註功能
-        private async Task<FileSystemItem?> GetEnabledModelAsync()
+        //private async Task<FileSystemItem?> GetEnabledModelAsync()
+        //{
+        //    if (_loginInfo?.LoginName == null) return null;
+
+        //    var param = new SqlParameter("@LoginName", _loginInfo.LoginName);
+
+        //    string? modelName = await _dataService.ScalarParamAsync("ODProxl",
+        //        "SELECT model_name FROM sys_models WHERE model_userAccount = @LoginName", param);
+
+        //    string? modelPath = await _dataService.ScalarParamAsync("ODProxl",
+        //        "SELECT model_path FROM sys_models WHERE model_userAccount = @LoginName", param);
+
+        //    if (string.IsNullOrWhiteSpace(modelName) || string.IsNullOrWhiteSpace(modelPath))
+        //        return null;
+
+        //    return new FileSystemItem { Name = modelName, FullPath = modelPath };
+        //}
+        private async Task<(FileSystemItem? model, List<string> classes)> GetEnabledModelWithClassesAsync()
         {
-            if (_loginInfo?.LoginName == null) return null;
+            if (_loginInfo?.LoginName == null) return (null, new());
 
             var param = new SqlParameter("@LoginName", _loginInfo.LoginName);
-
             string? modelName = await _dataService.ScalarParamAsync("ODProxl",
                 "SELECT model_name FROM sys_models WHERE model_userAccount = @LoginName", param);
-
             string? modelPath = await _dataService.ScalarParamAsync("ODProxl",
                 "SELECT model_path FROM sys_models WHERE model_userAccount = @LoginName", param);
 
-            if (string.IsNullOrWhiteSpace(modelName) || string.IsNullOrWhiteSpace(modelPath))
-                return null;
+            if (string.IsNullOrWhiteSpace(modelPath)) return (null, new());
 
-            return new FileSystemItem { Name = modelName, FullPath = modelPath };
+            var model = new FileSystemItem { Name = modelName ?? "", FullPath = modelPath };
+
+            // 讀取 classes.txt
+            var classesUrl = modelPath.Replace(".onnx", "_classes.txt", StringComparison.OrdinalIgnoreCase);
+            List<string> classes = new();
+            try
+            {
+                var text = await _httpClient.GetStringAsync(classesUrl);
+                classes = text.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                              .Select(s => s.Trim()).Where(s => !string.IsNullOrEmpty(s)).ToList();
+            }
+            catch { /* fallback */ }
+
+            return (model, classes);
         }
 
         private async Task<string> EnsureModelLocalAsync(string modelHttpUrl)
@@ -614,7 +657,9 @@ namespace ODProxl.ViewModels.Pages
                 return;
             }
 
-            var enabledModel = await GetEnabledModelAsync();
+            //var enabledModel = await GetEnabledModelAsync();
+            var (enabledModel, modelClasses) = await GetEnabledModelWithClassesAsync();
+
             if (enabledModel == null)
             {
                 StatusText = "❌ 沒有已啟用的 ONNX 模型，請先到「模型管理」頁面啟用一個模型";
@@ -630,7 +675,7 @@ namespace ODProxl.ViewModels.Pages
             var postprocessor = new YoloPostprocessor(
                 confThreshold: 0.30f,
                 iouThreshold: 0.45f,
-                classNames: null,
+                classNames: modelClasses.ToArray(),
                 inputWidth: preprocessor.TargetWidth,
                 inputHeight: preprocessor.TargetHeight,
                 originalWidth: (int)ImagePixelWidth,
@@ -671,10 +716,11 @@ namespace ODProxl.ViewModels.Pages
         #region INavigationAware
         public bool IsNavigationTarget(NavigationContext navigationContext) => true;
         public void OnNavigatedFrom(NavigationContext navigationContext) { }
-        public void OnNavigatedTo(NavigationContext navigationContext)
+        public async void OnNavigatedTo(NavigationContext navigationContext)
         {
             if (navigationContext.Parameters.ContainsKey("LoginInfo"))
                 LoginInfo = navigationContext.Parameters.GetValue<LoginInfo>("LoginInfo");
+            await LoadClassesFromEnabledModelAsync();
         }
         #endregion
 

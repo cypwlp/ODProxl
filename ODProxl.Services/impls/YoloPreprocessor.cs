@@ -150,5 +150,5 @@ namespace ODProxl.Services.impls
 
             return (letterboxed, ratio, padX, padY);
         }
-    }
+    }   
 }
