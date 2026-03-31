@@ -12,12 +12,19 @@ namespace ODProxl.EntityModels
                 ? $"多邊形 ({Points.Count} 點) - {ClassName}"
                 : $"矩形 - {ClassName}";
     }
-    public class ClassItem
+    public class ClassItem : BindableBase  
     {
-        public string Name { get; set; } = "";
+        private string _name = string.Empty;
+        public string Name
+        {
+            get => _name;
+            set => SetProperty(ref _name, value);
+        }
+
+        public override string ToString() => Name;  
     }
 
-   public class AnnotationDto
+    public class AnnotationDto
     {
         public List<List<double>> Points { get; set; } = new();
         public bool IsPolygon { get; set; }

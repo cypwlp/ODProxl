@@ -18,6 +18,7 @@ using SkiaSharp;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -255,11 +256,25 @@ namespace ODProxl.ViewModels.Pages
         {
             var (_, modelClasses) = await GetEnabledModelWithClassesAsync();
             _currentModelClasses = modelClasses;
+
             await Dispatcher.UIThread.InvokeAsync(() =>
             {
                 Classes.Clear();
-                foreach (var name in _currentModelClasses)
-                    Classes.Add(new ClassItem { Name = name });
+
+                if (modelClasses.Any())
+                {
+                    foreach (var name in modelClasses)
+                        Classes.Add(new ClassItem { Name = name });
+                }
+                else
+                {
+                    // 後備類別
+                    Classes.Add(new ClassItem { Name = "車牌" });
+                    Classes.Add(new ClassItem { Name = "車身" });
+                    Classes.Add(new ClassItem { Name = "輪胎" });
+                    Debug.WriteLine("⚠️ 使用預設類別（classes.txt 載入失敗）");
+                }
+
                 SelectedClass = Classes.FirstOrDefault();
             });
         }
@@ -538,24 +553,61 @@ namespace ODProxl.ViewModels.Pages
 
         private async Task<(FileSystemItem? model, List<string> classes)> GetEnabledModelWithClassesAsync()
         {
-            if (_loginInfo?.LoginName == null) return (null, new());
-            var param = new SqlParameter("@LoginName", _loginInfo.LoginName);
-            string? modelName = await _dataService.ScalarParamAsync("ODProxl",
-                "SELECT model_name FROM sys_models WHERE model_userAccount = @LoginName", param);
-            string? modelPath = await _dataService.ScalarParamAsync("ODProxl",
-                "SELECT model_path FROM sys_models WHERE model_userAccount = @LoginName", param);
-            if (string.IsNullOrWhiteSpace(modelPath)) return (null, new());
-            var model = new FileSystemItem { Name = modelName ?? "", FullPath = modelPath };
-            var classesUrl = modelPath.Replace(".onnx", "_classes.txt", StringComparison.OrdinalIgnoreCase);
-            List<string> classes = new();
+            if (_loginInfo?.LoginName == null)
+                return (null, new List<string>());
+
             try
             {
-                var text = await _httpClient.GetStringAsync(classesUrl);
-                classes = text.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
-                              .Select(s => s.Trim()).Where(s => !string.IsNullOrEmpty(s)).ToList();
+                var param = new SqlParameter("@LoginName", _loginInfo.LoginName);
+
+                string? modelName = await _dataService.ScalarParamAsync("ODProxl",
+                    "SELECT model_name FROM sys_models WHERE model_userAccount = @LoginName", param);
+
+                string? modelPath = await _dataService.ScalarParamAsync("ODProxl",
+                    "SELECT model_path FROM sys_models WHERE model_userAccount = @LoginName", param);
+
+                if (string.IsNullOrWhiteSpace(modelPath))
+                {
+                    Debug.WriteLine("⚠️ 資料庫中沒有已啟用的模型");
+                    return (null, new List<string>());
+                }
+
+                var model = new FileSystemItem { Name = modelName ?? "", FullPath = modelPath };
+
+                // 產生 classes.txt 的完整網址
+                var classesUrl = modelPath.Replace(".onnx", ".txt", StringComparison.OrdinalIgnoreCase);
+                Debug.WriteLine($"📄 正在載入 classes 檔案: {classesUrl}");
+
+                List<string> classes = new();
+
+                try
+                {
+                    var text = await _httpClient.GetStringAsync(classesUrl);
+                    Debug.WriteLine($"✅ classes.txt 內容長度: {text.Length} 字元");
+
+                    classes = text.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                                  .Select(s => s.Trim())
+                                  .Where(s => !string.IsNullOrWhiteSpace(s))
+                                  .ToList();
+
+                    Debug.WriteLine($"✅ 成功載入 {classes.Count} 個類別");
+                }
+                catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+                {
+                    Debug.WriteLine($"❌ classes.txt 檔案不存在: {classesUrl}");
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"❌ 讀取 classes.txt 失敗: {ex.Message}");
+                }
+
+                return (model, classes);
             }
-            catch { }
-            return (model, classes);
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"❌ GetEnabledModelWithClassesAsync 發生錯誤: {ex.Message}");
+                return (null, new List<string>());
+            }
         }
         private async Task<string> EnsureModelLocalAsync(string modelHttpUrl)
         {
@@ -623,7 +675,15 @@ namespace ODProxl.ViewModels.Pages
         {
             if (navigationContext.Parameters.ContainsKey("LoginInfo"))
                 LoginInfo = navigationContext.Parameters.GetValue<LoginInfo>("LoginInfo");
-            await LoadClassesFromEnabledModelAsync();
+            try
+            {
+                await LoadClassesFromEnabledModelAsync();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"載入失敗: {ex.Message}");
+                // 載入預設類別
+            }
         }
 
         public void Dispose()

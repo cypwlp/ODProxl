@@ -85,6 +85,7 @@ namespace ODProxl.ViewModels.Pages
         {
             LoginInfo = navigationContext.Parameters.GetValue<LoginInfo>("LoginInfo");
             await LoadModelsFromServerAsync();
+
         }
 
         private async Task LoadModelsFromServerAsync()
