@@ -135,7 +135,7 @@ namespace ODProxl.ViewModels
                     SubItems = new ObservableCollection<LeftMenuItem>
                     {
                         new LeftMenuItem { Icon = MaterialIconKind.SmokeDetector, Title = "數據標註", ViewName = "ClassMarkPage" },
-                        new LeftMenuItem { Icon = MaterialIconKind.GlobeModel, Title = "模型管理", ViewName = "OnnxModelMSPage", LimitUserName = new ObservableCollection<string> { "L5940", "L5126" } },
+                        new LeftMenuItem { Icon = MaterialIconKind.GlobeModel, Title = "模型管理", ViewName = "OnnxModelMSPage"},
                         new LeftMenuItem { Icon = MaterialIconKind.Magnify, Title = "实时檢測", ViewName = "Detect" },
                         new LeftMenuItem { Icon = MaterialIconKind.Magnify, Title = "類別對照庫", ViewName = "Detect" } //用戶規範不同用戶對相同類別的標註類別名，防止同一種目標被劃分為多個類別
                     }
