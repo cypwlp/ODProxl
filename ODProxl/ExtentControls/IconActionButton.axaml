@@ -1,0 +1,22 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:micons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="ODProxl.ExtentControls.IconActionButton">
+    <Button x:Name="InnerButton"
+            Classes="Filled TonalLarge"
+            CornerRadius="16"
+            MinWidth="56" MinHeight="56"
+            ToolTip.Tip="{Binding ToolTipText, RelativeSource={RelativeSource FindAncestor, AncestorType=UserControl}}">
+        <Grid>
+            <!-- 默认图标（使用 IconKind） -->
+            <micons:MaterialIcon x:Name="DefaultIcon"
+                                 Kind="{Binding IconKind, RelativeSource={RelativeSource FindAncestor, AncestorType=UserControl}}"
+                                 Width="28" Height="28"
+                                 IsVisible="{Binding IsDefaultIconVisible, RelativeSource={RelativeSource FindAncestor, AncestorType=UserControl}}" />
+            <!-- 自定义内容容器 -->
+            <ContentPresenter x:Name="CustomContentPresenter"
+                              Content="{Binding Content, RelativeSource={RelativeSource FindAncestor, AncestorType=UserControl}}"
+                              IsVisible="{Binding IsCustomContentVisible, RelativeSource={RelativeSource FindAncestor, AncestorType=UserControl}}" />
+        </Grid>
+    </Button>
+</UserControl>
