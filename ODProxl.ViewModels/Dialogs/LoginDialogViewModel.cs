@@ -1,9 +1,9 @@
-﻿using Avalonia.Logging;
+﻿using Avalonia.Threading;
+using Material.Styles.Controls;
+using Material.Styles.Models;
 using ODProxl.Services;
+using Prism.Commands;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace ODProxl.ViewModels.Dialogs
@@ -12,26 +12,20 @@ namespace ODProxl.ViewModels.Dialogs
     {
         #region IDialogAware Implementation
         public string Title => "登入系統";
-        public DialogCloseListener RequestClose { get; private set; }
+        public DialogCloseListener RequestClose { get; private set; } = new();
         public bool CanCloseDialog() => true;
         public void OnDialogClosed() { }
         public void OnDialogOpened(IDialogParameters parameters) { }
         #endregion
 
         #region 字段
-        private readonly IDialogService? _dialogService;
         private readonly IDataService? _dataService;
-        private RemoteService.LoginInfo? logInfo;
+        private readonly IDialogService? _dialogService;
+        private readonly INotificationService? _notificationService;   // 如果你還想保留，可以繼續用
+
         private string? _userName;
         private string? _password;
         private string _database = "TopmixData";
-        public DelegateCommand LoginCommand => new(async () => await LoginAsync());
-        public LoginDialogViewModel(IDataService dataService, IDialogService dialogService)
-        {
-            _dataService = dataService;
-            _dialogService = dialogService;
-        }
-
         #endregion
 
         #region 屬性
@@ -40,11 +34,13 @@ namespace ODProxl.ViewModels.Dialogs
             get => _userName;
             set => SetProperty(ref _userName, value);
         }
+
         public string? Password
         {
             get => _password;
             set => SetProperty(ref _password, value);
         }
+
         public string Database
         {
             get => _database;
@@ -52,29 +48,43 @@ namespace ODProxl.ViewModels.Dialogs
         }
         #endregion
 
-        #region 登錄邏輯
+        public DelegateCommand LoginCommand { get; }
+
+        public LoginDialogViewModel(IDataService dataService, IDialogService dialogService, INotificationService? notificationService = null)
+        {
+            _dataService = dataService;
+            _dialogService = dialogService;
+            _notificationService = notificationService;
+            LoginCommand = new DelegateCommand(async () => await LoginAsync());
+        }
+
         private async Task LoginAsync()
         {
             if (string.IsNullOrWhiteSpace(UserName) || string.IsNullOrWhiteSpace(Password))
-            {
                 return;
-            }
+
             bool success = await _dataService!.InitializeAsync(UserName!, Password!, "ODProxl");
-
-            if (success)
+            try
             {
-                var loginInfo = await _dataService.GetLoginInfoAsync();
-                var paras = new DialogParameters();
-                paras.Add("LoginInfo", loginInfo);
-
-                RequestClose.Invoke(paras, ButtonResult.OK);
+                if (success)
+                {
+                    var loginInfo = await _dataService.GetLoginInfoAsync();
+                    var paras = new DialogParameters { { "LoginInfo", loginInfo } };
+                    RequestClose.Invoke(paras, ButtonResult.OK);
+                }
+                else
+                {
+                    string content = "用户名或密码错误，请重试。";
+                    SnackbarModel snackbar = new SnackbarModel(content, TimeSpan.FromSeconds(5));
+                    SnackbarHost.Post(snackbar, "LoginSnackbarHost", DispatcherPriority.Normal);
+                }
             }
-            else
+            catch (Exception ex)
             {
-                // 登入失敗處理（可自行加上訊息框）
-
+                string content = $"登入過程中發生錯誤: {ex.Message}";
+                SnackbarModel snackbar = new SnackbarModel(content, TimeSpan.FromSeconds(5));
+                SnackbarHost.Post(snackbar, "LoginSnackbarHost", DispatcherPriority.Normal);
             }
         }
-        #endregion 
     }
 }

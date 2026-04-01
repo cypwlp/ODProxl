@@ -3,9 +3,11 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
+using Avalonia.Threading;
 using Material.Icons;
 using Material.Icons.Avalonia;
-using ODProxl.ViewModels.Dialogs; // 确保引用了 ViewModel 命名空间
+using ODProxl.ViewModels.Dialogs;
+using Prism.Events; // 确保引用了 ViewModel 命名空间
 
 namespace ODProxl.Dialogs;
 
@@ -14,6 +16,7 @@ public partial class LoginDialog : UserControl
     public LoginDialog()
     {
         InitializeComponent();
+
     }
 
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
@@ -27,7 +30,6 @@ public partial class LoginDialog : UserControl
             window.CanResize = false;
         }
     }
-
     /// <summary>
     /// 最小化按鈕
     /// </summary>

@@ -46,6 +46,7 @@ namespace ODProxl
                     new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", authToken);
                 return client;
             });
+            containerRegistry.RegisterSingleton<INotificationService, NotificationService>();
             containerRegistry.Register<IGeoLocationService, GeoLocationService>();
             containerRegistry.Register<IDialogService, DialogService>();
             containerRegistry.Register<IUpdateService, UpdateService>();

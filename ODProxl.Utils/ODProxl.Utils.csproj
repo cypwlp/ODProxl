@@ -9,6 +9,9 @@
 	<ItemGroup>
 		<!-- 只保留 PackageReference，不寫版本 -->
 		<PackageReference Include="Avalonia" />
+		<PackageReference Include="Prism.DryIoc.Avalonia" />
+		<PackageReference Include="Prism.Avalonia" />
+		<PackageReference Include="Material.Avalonia"/>
 		<PackageReference Include="Microsoft.Data.SqlClient" />
 		<PackageReference Include="System.ServiceModel.Http" />
 		<PackageReference Include="System.ServiceModel.NetTcp" />
