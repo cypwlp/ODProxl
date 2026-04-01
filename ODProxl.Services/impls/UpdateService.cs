@@ -1,9 +1,512 @@
-﻿using Avalonia.Threading;
+﻿//using Avalonia.Threading;
+//using ODProxl.EntityModels;
+//using ODProxl.Utils;
+//using Prism.Dialogs;
+//using System;
+//using System.Dynamic;
+//using System.IO;
+//using System.Linq;
+//using System.Net.Http;
+//using System.Net.Http.Headers;
+//using System.Runtime.InteropServices;
+//using System.Text.Json;
+//using System.Threading.Tasks;
+//using Velopack;
+//using Velopack.Sources;
+//using File = System.IO.File;
+
+//namespace ODProxl.Services.impls
+//{
+//    public class UpdateService : IUpdateService
+//    {
+//        private readonly IDialogService _dialogService;
+//        private static readonly HttpClient _httpClient = new HttpClient
+//        {
+//            Timeout = TimeSpan.FromMinutes(5)
+//        };
+
+//        public UpdateService(IDialogService dialogService)
+//        {
+//            _dialogService = dialogService;
+//            _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("ODProxl/UpdateChecker");
+//        }
+
+//        public async Task UpdateODProxlAsync(string countryCode)
+//        {
+//            if (System.Diagnostics.Debugger.IsAttached)
+//            {
+//                Console.WriteLine("[Debug 模式] 已跳過 Velopack 更新檢查");
+//                return;
+//            }
+
+//            if (countryCode == "CN")
+//            {
+//                //await CheckAndUpdateForChinaAsync();
+//                await DLLUpdateAsync();
+//            }
+//            else
+//            {
+//                await CheckAndUpdateForGitHubAsync();
+//            }
+//        }
+
+//        // ==================== 以下为原有更新逻辑（无需修改）====================
+//        private async Task CheckAndUpdateForChinaAsync()
+//        {
+//            try
+//            {
+//                string rid = RuntimeInformation.RuntimeIdentifier;
+//                Console.WriteLine($"[Velopack CN] 開始檢查更新，RuntimeIdentifier: {rid}");
+//                string latestVersion = await GetLatestVersionFromGitHubAsync();
+//                if (string.IsNullOrEmpty(latestVersion))
+//                {
+//                    Console.WriteLine("[Velopack CN] 無法取得最新版本號，跳過更新");
+//                    return;
+//                }
+//                string baseUrl = $"http://interior.topmix.net/info/system/software/ODProxl/{latestVersion}/";
+//                Console.WriteLine($"[Velopack CN] baseUrl = {baseUrl}");
+
+//                var options = new UpdateOptions { ExplicitChannel = rid };
+//                var mgr = new UpdateManager(baseUrl, options);
+//                Console.WriteLine($"[Velopack CN] 目前安裝版本: {mgr.CurrentVersion}");
+//                var updateInfo = await mgr.CheckForUpdatesAsync();
+//                if (updateInfo == null)
+//                {
+//                    Console.WriteLine($"[Velopack CN] 目前已是最新版本 或無法取得 releases.{rid}.json");
+//                    return;
+//                }
+//                Console.WriteLine($"[Velopack CN] 發現新版本 {updateInfo.TargetFullRelease?.Version}");
+
+//                await Dispatcher.UIThread.InvokeAsync(async () =>
+//                {
+//                    var parameters = new DialogParameters { { "UpdateInfo", updateInfo } };
+//                    var result = await _dialogService.ShowDialogAsync("UpdateDialog", parameters);
+//                    if (result?.Result == ButtonResult.OK)
+//                    {
+//                        await mgr.DownloadUpdatesAsync(updateInfo);
+//                        mgr.ApplyUpdatesAndRestart(updateInfo);
+//                    }
+//                });
+//            }
+//            catch (Exception ex)
+//            {
+//                Console.WriteLine($"[Velopack CN] 更新檢查失敗：{ex.Message}");
+//            }
+//        }
+
+//        private async Task CheckAndUpdateForGitHubAsync()
+//        {
+//            try
+//            {
+//                var source = new GithubSource("https://github.com/cypwlp/ODProxl", "", false);
+//                var mgr = new UpdateManager(source);
+//                var updateInfo = await mgr.CheckForUpdatesAsync();
+//                if (updateInfo == null)
+//                {
+//                    Console.WriteLine("[Velopack GitHub] 目前已是最新版本");
+//                    return;
+//                }
+//                Console.WriteLine($"[Velopack GitHub] 發現新版本 {updateInfo.TargetFullRelease?.Version}");
+//                await Dispatcher.UIThread.InvokeAsync(async () =>
+//                {
+//                    var parameters = new DialogParameters { { "UpdateInfo", updateInfo } };
+//                    var result = await _dialogService.ShowDialogAsync("UpdateDialog", parameters);
+//                    if (result?.Result == ButtonResult.OK)
+//                    {
+//                        await mgr.DownloadUpdatesAsync(updateInfo);
+//                        mgr.ApplyUpdatesAndRestart(updateInfo);
+//                    }
+//                });
+//            }
+//            catch (Exception ex)
+//            {
+//                Console.WriteLine($"[Velopack GitHub] 更新檢查失敗：{ex.Message}");
+//            }
+//        }
+
+//        private static async Task<string> GetLatestVersionFromGitHubAsync()
+//        {
+//            try
+//            {
+//                var response = await _httpClient.GetAsync("https://api.github.com/repos/cypwlp/ODProxl/releases/latest");
+//                response.EnsureSuccessStatusCode();
+//                var json = await response.Content.ReadAsStringAsync();
+//                using var doc = JsonDocument.Parse(json);
+//                var root = doc.RootElement;
+//                if (root.TryGetProperty("tag_name", out var tagElement))
+//                {
+//                    string tag = tagElement.GetString() ?? "";
+//                    string version = tag.StartsWith("v") ? tag.Substring(1) : tag;
+//                    Console.WriteLine($"[GetLatestVersion] 從 GitHub 取得最新版本: {version}");
+//                    return version;
+//                }
+//            }
+//            catch (Exception ex)
+//            {
+//                Console.WriteLine($"[GetLatestVersion] 取得 GitHub 最新版本失敗：{ex.Message}");
+//            }
+//            return string.Empty;
+//        }
+
+//        private static async Task<string> ComputeFileHashAsync(string filePath)
+//        {
+//            using var sha256 = System.Security.Cryptography.SHA256.Create();
+//            await using var stream = File.OpenRead(filePath);
+//            byte[] hash = await sha256.ComputeHashAsync(stream);
+//            return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+//        }
+
+//        private async Task DLLUpdateAsync()
+//        {
+//            string rid = PlatformHelper.GetCurrentRid();
+//            string startupPath = AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar);
+//            string dllUpdateBaseUrl = $"http://interior.topmix.net/info/system/software/ODProxl/{rid}/";
+
+//            try
+//            {
+//                Console.WriteLine($"[DLL Update] 開始檢查 DLL 更新，平台: {rid}");
+//                string manifestUrl = $"{dllUpdateBaseUrl}dlls.json";
+
+//                var response = await _httpClient.GetAsync(manifestUrl);
+//                response.EnsureSuccessStatusCode();
+
+//                string json = await response.Content.ReadAsStringAsync();
+//                var manifest = JsonSerializer.Deserialize<DllManifest>(json,
+//                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+//                if (manifest?.Dlls == null || manifest.Dlls.Count == 0)
+//                {
+//                    Console.WriteLine("[DLL Update] 清单为空，跳过");
+//                    return;
+//                }
+
+//                Console.WriteLine($"[DLL Update] 清单版本: {manifest.Version}，共 {manifest.Dlls.Count} 個檔案");
+
+//                var updateList = new List<DllInfo>();
+
+//                foreach (var dll in manifest.Dlls)
+//                {
+//                    string localPath = Path.Combine(startupPath, dll.FileName);
+
+//                    string? dir = Path.GetDirectoryName(localPath);
+//                    if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+//                        Directory.CreateDirectory(dir);
+
+//                    bool needsUpdate = true;
+//                    if (File.Exists(localPath))
+//                    {
+//                        string localHash = await ComputeFileHashAsync(localPath);
+//                        if (localHash.Equals(dll.Hash, StringComparison.OrdinalIgnoreCase))
+//                        {
+//                            needsUpdate = false;
+//                        }
+//                    }
+
+//                    if (needsUpdate)
+//                    {
+//                        updateList.Add(dll);
+//                        Console.WriteLine($"[DLL Update] 需要更新: {dll.FileName}");
+//                    }
+//                }
+
+//                if (updateList.Count == 0)
+//                {
+//                    Console.WriteLine("[DLL Update] 所有 DLL 均為最新版本");
+//                    return;
+//                }
+
+//                // === 使用 UpdateDialog ===
+//                bool shouldUpdate = false;
+//                await Dispatcher.UIThread.InvokeAsync(async () =>
+//                {
+//                    var parameters = new DialogParameters
+//            {
+//                { "DllUpdateList", updateList },
+//                { "Version", manifest.Version }
+//            };
+
+//                    var result = await _dialogService.ShowDialogAsync("UpdateDialog", parameters);
+//                    shouldUpdate = result?.Result == ButtonResult.OK;
+//                });
+
+//                if (!shouldUpdate)
+//                {
+//                    Console.WriteLine("[DLL Update] 使用者取消更新");
+//                    return;
+//                }
+
+//                // 開始下載並更新
+//                foreach (var dll in updateList)
+//                {
+//                    string downloadUrl = string.IsNullOrEmpty(dll.Url) ? $"{dllUpdateBaseUrl}{dll.FileName}" : dll.Url;
+//                    string localPath = Path.Combine(startupPath, dll.FileName);
+//                    string tempPath = localPath + ".tmp";
+
+//                    Console.WriteLine($"[DLL Update] 正在下載: {dll.FileName}");
+
+//                    var dllResponse = await _httpClient.GetAsync(downloadUrl);
+//                    dllResponse.EnsureSuccessStatusCode();
+
+//                    await using (var fs = new FileStream(tempPath, FileMode.Create, FileAccess.Write))
+//                    {
+//                        await dllResponse.Content.CopyToAsync(fs);
+//                    }
+
+//                    string downloadedHash = await ComputeFileHashAsync(tempPath);
+//                    if (!downloadedHash.Equals(dll.Hash, StringComparison.OrdinalIgnoreCase))
+//                    {
+//                        File.Delete(tempPath);
+//                        Console.WriteLine($"[DLL Update] {dll.FileName} 哈希驗證失敗");
+//                        continue;
+//                    }
+
+//                    if (File.Exists(localPath))
+//                    {
+//                        try { File.Delete(localPath); }
+//                        catch { File.Move(localPath, localPath + ".bak", true); }
+//                    }
+
+//                    File.Move(tempPath, localPath);
+//                    Console.WriteLine($"[DLL Update] {dll.FileName} 更新完成");
+//                }
+
+//                Console.WriteLine($"[DLL Update] ✅ 全部 {updateList.Count} 個 DLL 更新完成！");
+//            }
+//            catch (Exception ex)
+//            {
+//                Console.WriteLine($"[DLL Update] 更新失敗：{ex.Message}");
+//            }
+//        }
+//        //private async Task DLLUpdateAsync()
+//        //{
+//        //    // （你的原始 DLLUpdateAsync 代码保持不变）
+//        //    string rid = PlatformHelper.GetCurrentRid();
+//        //    string startupPath = AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar);
+//        //    string dllUpdateBaseUrl = $"http://interior.topmix.net/info/system/software/ODProxl/{rid}/";
+//        //    try
+//        //    {
+//        //        Console.WriteLine($"[DLL Update] 开始独立检查 DLL 更新");
+//        //        Console.WriteLine($"[DLL Update] 启动路径: {startupPath}");
+//        //        Console.WriteLine($"[DLL Update] Base URL: {dllUpdateBaseUrl}");
+
+//        //        string manifestUrl = $"{dllUpdateBaseUrl}dlls.json";
+//        //        var response = await _httpClient.GetAsync(manifestUrl);
+//        //        response.EnsureSuccessStatusCode();
+//        //        string json = await response.Content.ReadAsStringAsync();
+//        //        var manifest = JsonSerializer.Deserialize<DllManifest>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+//        //        if (manifest?.Dlls == null || manifest.Dlls.Count == 0)
+//        //        {
+//        //            Console.WriteLine("[DLL Update] 清单为空或解析失败，跳过");
+//        //            return;
+//        //        }
+
+//        //        Console.WriteLine($"[DLL Update] 清单版本: {manifest.Version}，共检查 {manifest.Dlls.Count} 个文件");
+//        //        var updateList = new List<DllInfo>();
+
+//        //        foreach (var dll in manifest.Dlls)
+//        //        {
+//        //            string localPath = Path.Combine(startupPath, dll.FileName);
+//        //            string? dir = Path.GetDirectoryName(localPath);
+//        //            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+//        //                Directory.CreateDirectory(dir);
+
+//        //            bool needsUpdate = true;
+//        //            if (File.Exists(localPath))
+//        //            {
+//        //                string localHash = await ComputeFileHashAsync(localPath);
+//        //                if (localHash.Equals(dll.Hash, StringComparison.OrdinalIgnoreCase))
+//        //                {
+//        //                    needsUpdate = false;
+//        //                    Console.WriteLine($"[DLL Update] {dll.FileName} 已是最新");
+//        //                }
+//        //            }
+//        //            if (needsUpdate)
+//        //            {
+//        //                updateList.Add(dll);
+//        //                Console.WriteLine($"[DLL Update] 发现需要更新: {dll.FileName}");
+//        //            }
+//        //        }
+
+//        //        if (updateList.Count == 0)
+//        //        {
+//        //            Console.WriteLine("[DLL Update] 所有 DLL 均为最新版本");
+//        //            return;
+//        //        }
+
+//        //        bool shouldUpdate = false;
+//        //        await Dispatcher.UIThread.InvokeAsync(async () =>
+//        //        {
+//        //            var parameters = new DialogParameters
+//        //            {
+//        //                { "Title", "DLL 更新" },
+//        //                { "Message", $"发现 {updateList.Count} 个 DLL 文件需要更新，是否立即更新？\n\n（此更新与主程序更新完全独立）" }
+//        //            };
+//        //            var result = await _dialogService.ShowDialogAsync("ConfirmDialog", parameters);
+//        //            shouldUpdate = result?.Result == ButtonResult.OK;
+//        //        });
+
+//        //        if (!shouldUpdate) return;
+
+//        //        foreach (var dll in updateList)
+//        //        {
+//        //            string downloadUrl = string.IsNullOrEmpty(dll.Url) ? $"{dllUpdateBaseUrl}{dll.FileName}" : dll.Url;
+//        //            string localPath = Path.Combine(startupPath, dll.FileName);
+//        //            string tempPath = localPath + ".tmp";
+
+//        //            Console.WriteLine($"[DLL Update] 正在下载 → {dll.FileName}");
+//        //            var dllResponse = await _httpClient.GetAsync(downloadUrl);
+//        //            dllResponse.EnsureSuccessStatusCode();
+//        //            await using (var fs = new FileStream(tempPath, FileMode.Create, FileAccess.Write))
+//        //            {
+//        //                await dllResponse.Content.CopyToAsync(fs);
+//        //            }
+
+//        //            string downloadedHash = await ComputeFileHashAsync(tempPath);
+//        //            if (!downloadedHash.Equals(dll.Hash, StringComparison.OrdinalIgnoreCase))
+//        //            {
+//        //                File.Delete(tempPath);
+//        //                Console.WriteLine($"[DLL Update] {dll.FileName} 下载哈希验证失败，跳过");
+//        //                continue;
+//        //            }
+
+//        //            if (File.Exists(localPath))
+//        //            {
+//        //                try { File.Delete(localPath); }
+//        //                catch
+//        //                {
+//        //                    File.Move(localPath, localPath + ".bak", true);
+//        //                }
+//        //            }
+//        //            File.Move(tempPath, localPath);
+//        //            Console.WriteLine($"[DLL Update] {dll.FileName} 更新成功");
+//        //        }
+
+//        //        Console.WriteLine("[DLL Update] DLL 独立更新全部完成！");
+//        //    }
+//        //    catch (Exception ex)
+//        //    {
+//        //        Console.WriteLine($"[DLL Update] 独立更新失败：{ex.Message}");
+//        //    }
+//        //}
+
+//        // ==================== 【新增】支持全平台上传的核心方法（已去重）====================
+//        public async Task<bool> PublishNewDllVersionAsync(string version, string dllFilePaths,
+//            string updateDescription, string codeDescription, string targetRid)
+//        {
+//            if (string.IsNullOrWhiteSpace(version))
+//            {
+//                Console.WriteLine("[DLL Upload] 版本号不能为空");
+//                return false;
+//            }
+//            if (string.IsNullOrWhiteSpace(targetRid))
+//            {
+//                Console.WriteLine("[DLL Upload] 必须选择目标平台 RID");
+//                return false;
+//            }
+
+//            string baseUrl = $"http://interior.topmix.net/info/system/software/ODProxl/{targetRid}/";
+//            string manifestUrl = $"{baseUrl}dlls.json";
+
+//            Console.WriteLine($"[DLL Upload] 开始发布 DLL 版本 {version}，目标平台: {targetRid}");
+
+//            DllManifest manifest = await GetOrCreateManifestAsync(manifestUrl);
+
+//            var paths = dllFilePaths.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+//                .Select(p => p.Trim()).Where(p => !string.IsNullOrEmpty(p)).ToList();
+
+//            string localManifestPath = paths.FirstOrDefault(p => p.EndsWith(".json", StringComparison.OrdinalIgnoreCase));
+
+//            if (localManifestPath != null)
+//            {
+//                string json = await File.ReadAllTextAsync(localManifestPath);
+//                manifest = JsonSerializer.Deserialize<DllManifest>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new DllManifest();
+//                manifest.Version = version;
+//                Console.WriteLine($"[DLL Upload] 使用本地清单文件 {localManifestPath}");
+//            }
+//            else
+//            {
+//                manifest.Version = version;
+//                foreach (var localPath in paths.Where(File.Exists))
+//                {
+//                    await ProcessAndUploadSingleDllAsync(localPath, manifest, baseUrl);
+//                }
+//            }
+
+//            await UploadManifestAsync(manifestUrl, manifest);
+
+//            if (!string.IsNullOrWhiteSpace(updateDescription) || !string.IsNullOrWhiteSpace(codeDescription))
+//            {
+//                Console.WriteLine($"[DLL Upload] 更新说明: {updateDescription}");
+//                Console.WriteLine($"[DLL Upload] 代码说明: {codeDescription}");
+//            }
+
+//            Console.WriteLine($"[DLL Upload] ✅ DLL 版本 {version} 已成功发布到 {targetRid}！");
+//            return true;
+//        }
+
+//        private async Task<DllManifest> GetOrCreateManifestAsync(string manifestUrl)
+//        {
+//            try
+//            {
+//                var response = await _httpClient.GetAsync(manifestUrl);
+//                if (response.IsSuccessStatusCode)
+//                {
+//                    string json = await response.Content.ReadAsStringAsync();
+//                    return JsonSerializer.Deserialize<DllManifest>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new DllManifest();
+//                }
+//            }
+//            catch { }
+//            return new DllManifest();
+//        }
+
+//        private async Task ProcessAndUploadSingleDllAsync(string localPath, DllManifest manifest, string baseUrl)
+//        {
+//            string fileName = Path.GetFileName(localPath);
+//            string hash = await ComputeFileHashAsync(localPath);
+//            long size = new FileInfo(localPath).Length;
+
+//            var dllInfo = new DllInfo
+//            {
+//                FileName = fileName,
+//                Hash = hash,
+//                Size = size,
+//                Url = string.Empty
+//            };
+
+//            manifest.Dlls.RemoveAll(d => d.FileName.Equals(fileName, StringComparison.OrdinalIgnoreCase));
+//            manifest.Dlls.Add(dllInfo);
+
+//            await UploadFileAsync($"{baseUrl}{fileName}", localPath);
+//            Console.WriteLine($"[DLL Upload] 已上传 {fileName} (hash: {hash.Substring(0, 8)}...)");
+//        }
+
+//        private async Task UploadFileAsync(string url, string localFilePath)
+//        {
+//            using var fileStream = File.OpenRead(localFilePath);
+//            using var content = new StreamContent(fileStream);
+//            content.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+
+//            var response = await _httpClient.PutAsync(url, content);
+//            response.EnsureSuccessStatusCode();
+//        }
+
+//        private async Task UploadManifestAsync(string url, DllManifest manifest)
+//        {
+//            string json = JsonSerializer.Serialize(manifest, new JsonSerializerOptions { WriteIndented = true });
+//            using var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+
+//            var response = await _httpClient.PutAsync(url, content);
+//            response.EnsureSuccessStatusCode();
+//        }
+//    }
+//}
+using Avalonia.Threading;
 using ODProxl.EntityModels;
 using ODProxl.Utils;
 using Prism.Dialogs;
 using System;
-using System.Dynamic;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -20,15 +523,13 @@ namespace ODProxl.Services.impls
     public class UpdateService : IUpdateService
     {
         private readonly IDialogService _dialogService;
-        private static readonly HttpClient _httpClient = new HttpClient
-        {
-            Timeout = TimeSpan.FromMinutes(5)
-        };
+        private readonly HttpClient _httpClient;
 
-        public UpdateService(IDialogService dialogService)
+        public UpdateService(IDialogService dialogService, HttpClient httpClient)
         {
             _dialogService = dialogService;
-            _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("ODProxl/UpdateChecker");
+            _httpClient = httpClient;
+            _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("ODProxl/UpdateService");
         }
 
         public async Task UpdateODProxlAsync(string countryCode)
@@ -50,31 +551,36 @@ namespace ODProxl.Services.impls
             }
         }
 
-        // ==================== 以下为原有更新逻辑（无需修改）====================
+        // ==================== 國內 Velopack 更新（完整保留）====================
         private async Task CheckAndUpdateForChinaAsync()
         {
             try
             {
                 string rid = RuntimeInformation.RuntimeIdentifier;
                 Console.WriteLine($"[Velopack CN] 開始檢查更新，RuntimeIdentifier: {rid}");
+
                 string latestVersion = await GetLatestVersionFromGitHubAsync();
                 if (string.IsNullOrEmpty(latestVersion))
                 {
                     Console.WriteLine("[Velopack CN] 無法取得最新版本號，跳過更新");
                     return;
                 }
+
                 string baseUrl = $"http://interior.topmix.net/info/system/software/ODProxl/{latestVersion}/";
                 Console.WriteLine($"[Velopack CN] baseUrl = {baseUrl}");
 
                 var options = new UpdateOptions { ExplicitChannel = rid };
                 var mgr = new UpdateManager(baseUrl, options);
+
                 Console.WriteLine($"[Velopack CN] 目前安裝版本: {mgr.CurrentVersion}");
+
                 var updateInfo = await mgr.CheckForUpdatesAsync();
                 if (updateInfo == null)
                 {
-                    Console.WriteLine($"[Velopack CN] 目前已是最新版本 或無法取得 releases.{rid}.json");
+                    Console.WriteLine($"[Velopack CN] 目前已是最新版本");
                     return;
                 }
+
                 Console.WriteLine($"[Velopack CN] 發現新版本 {updateInfo.TargetFullRelease?.Version}");
 
                 await Dispatcher.UIThread.InvokeAsync(async () =>
@@ -94,6 +600,7 @@ namespace ODProxl.Services.impls
             }
         }
 
+        // ==================== GitHub 更新（國外）====================
         private async Task CheckAndUpdateForGitHubAsync()
         {
             try
@@ -101,12 +608,15 @@ namespace ODProxl.Services.impls
                 var source = new GithubSource("https://github.com/cypwlp/ODProxl", "", false);
                 var mgr = new UpdateManager(source);
                 var updateInfo = await mgr.CheckForUpdatesAsync();
+
                 if (updateInfo == null)
                 {
                     Console.WriteLine("[Velopack GitHub] 目前已是最新版本");
                     return;
                 }
+
                 Console.WriteLine($"[Velopack GitHub] 發現新版本 {updateInfo.TargetFullRelease?.Version}");
+
                 await Dispatcher.UIThread.InvokeAsync(async () =>
                 {
                     var parameters = new DialogParameters { { "UpdateInfo", updateInfo } };
@@ -124,49 +634,18 @@ namespace ODProxl.Services.impls
             }
         }
 
-        private static async Task<string> GetLatestVersionFromGitHubAsync()
-        {
-            try
-            {
-                var response = await _httpClient.GetAsync("https://api.github.com/repos/cypwlp/ODProxl/releases/latest");
-                response.EnsureSuccessStatusCode();
-                var json = await response.Content.ReadAsStringAsync();
-                using var doc = JsonDocument.Parse(json);
-                var root = doc.RootElement;
-                if (root.TryGetProperty("tag_name", out var tagElement))
-                {
-                    string tag = tagElement.GetString() ?? "";
-                    string version = tag.StartsWith("v") ? tag.Substring(1) : tag;
-                    Console.WriteLine($"[GetLatestVersion] 從 GitHub 取得最新版本: {version}");
-                    return version;
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[GetLatestVersion] 取得 GitHub 最新版本失敗：{ex.Message}");
-            }
-            return string.Empty;
-        }
-
-        private static async Task<string> ComputeFileHashAsync(string filePath)
-        {
-            using var sha256 = System.Security.Cryptography.SHA256.Create();
-            await using var stream = File.OpenRead(filePath);
-            byte[] hash = await sha256.ComputeHashAsync(stream);
-            return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
-        }
-
+        // ==================== 獨立 DLL 更新 ========================
         private async Task DLLUpdateAsync()
         {
             string rid = PlatformHelper.GetCurrentRid();
             string startupPath = AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar);
-            string dllUpdateBaseUrl = $"http://interior.topmix.net/info/system/software/ODProxl/{rid}/";
+            string dllUpdateBaseUrl = $"http://interior.topmix.net/info/system/software/ODProxl/DLLUpdater/{rid}/";
 
             try
             {
-                Console.WriteLine($"[DLL Update] 開始檢查 DLL 更新，平台: {rid}");
-                string manifestUrl = $"{dllUpdateBaseUrl}dlls.json";
+                Console.WriteLine($"[DLL Update] 開始檢查 DLL 更新，平台: {rid}，路徑: {dllUpdateBaseUrl}");
 
+                string manifestUrl = $"{dllUpdateBaseUrl}dlls.json";
                 var response = await _httpClient.GetAsync(manifestUrl);
                 response.EnsureSuccessStatusCode();
 
@@ -176,18 +655,14 @@ namespace ODProxl.Services.impls
 
                 if (manifest?.Dlls == null || manifest.Dlls.Count == 0)
                 {
-                    Console.WriteLine("[DLL Update] 清单为空，跳过");
+                    Console.WriteLine("[DLL Update] 清單為空，跳過");
                     return;
                 }
 
-                Console.WriteLine($"[DLL Update] 清单版本: {manifest.Version}，共 {manifest.Dlls.Count} 個檔案");
-
                 var updateList = new List<DllInfo>();
-
                 foreach (var dll in manifest.Dlls)
                 {
                     string localPath = Path.Combine(startupPath, dll.FileName);
-
                     string? dir = Path.GetDirectoryName(localPath);
                     if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
                         Directory.CreateDirectory(dir);
@@ -197,16 +672,11 @@ namespace ODProxl.Services.impls
                     {
                         string localHash = await ComputeFileHashAsync(localPath);
                         if (localHash.Equals(dll.Hash, StringComparison.OrdinalIgnoreCase))
-                        {
                             needsUpdate = false;
-                        }
                     }
 
                     if (needsUpdate)
-                    {
                         updateList.Add(dll);
-                        Console.WriteLine($"[DLL Update] 需要更新: {dll.FileName}");
-                    }
                 }
 
                 if (updateList.Count == 0)
@@ -215,214 +685,82 @@ namespace ODProxl.Services.impls
                     return;
                 }
 
-                // === 使用 UpdateDialog ===
                 bool shouldUpdate = false;
                 await Dispatcher.UIThread.InvokeAsync(async () =>
                 {
                     var parameters = new DialogParameters
-            {
-                { "DllUpdateList", updateList },
-                { "Version", manifest.Version }
-            };
-
+                    {
+                        { "DllUpdateList", updateList },
+                        { "Version", manifest.Version }
+                    };
                     var result = await _dialogService.ShowDialogAsync("UpdateDialog", parameters);
                     shouldUpdate = result?.Result == ButtonResult.OK;
                 });
 
-                if (!shouldUpdate)
-                {
-                    Console.WriteLine("[DLL Update] 使用者取消更新");
-                    return;
-                }
+                if (!shouldUpdate) return;
 
-                // 開始下載並更新
                 foreach (var dll in updateList)
                 {
                     string downloadUrl = string.IsNullOrEmpty(dll.Url) ? $"{dllUpdateBaseUrl}{dll.FileName}" : dll.Url;
                     string localPath = Path.Combine(startupPath, dll.FileName);
                     string tempPath = localPath + ".tmp";
 
-                    Console.WriteLine($"[DLL Update] 正在下載: {dll.FileName}");
-
                     var dllResponse = await _httpClient.GetAsync(downloadUrl);
                     dllResponse.EnsureSuccessStatusCode();
 
-                    await using (var fs = new FileStream(tempPath, FileMode.Create, FileAccess.Write))
+                    await using (var fs = new FileStream(tempPath, FileMode.Create))
                     {
                         await dllResponse.Content.CopyToAsync(fs);
                     }
 
-                    string downloadedHash = await ComputeFileHashAsync(tempPath);
-                    if (!downloadedHash.Equals(dll.Hash, StringComparison.OrdinalIgnoreCase))
+                    // === 修正點 1：使用 string.Equals ===
+                    if (!string.Equals(await ComputeFileHashAsync(tempPath), dll.Hash, StringComparison.OrdinalIgnoreCase))
                     {
                         File.Delete(tempPath);
-                        Console.WriteLine($"[DLL Update] {dll.FileName} 哈希驗證失敗");
                         continue;
                     }
 
                     if (File.Exists(localPath))
-                    {
-                        try { File.Delete(localPath); }
-                        catch { File.Move(localPath, localPath + ".bak", true); }
-                    }
+                        try { File.Delete(localPath); } catch { File.Move(localPath, localPath + ".bak", true); }
 
                     File.Move(tempPath, localPath);
                     Console.WriteLine($"[DLL Update] {dll.FileName} 更新完成");
                 }
-
-                Console.WriteLine($"[DLL Update] ✅ 全部 {updateList.Count} 個 DLL 更新完成！");
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"[DLL Update] 更新失敗：{ex.Message}");
             }
         }
-        //private async Task DLLUpdateAsync()
-        //{
-        //    // （你的原始 DLLUpdateAsync 代码保持不变）
-        //    string rid = PlatformHelper.GetCurrentRid();
-        //    string startupPath = AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar);
-        //    string dllUpdateBaseUrl = $"http://interior.topmix.net/info/system/software/ODProxl/{rid}/";
-        //    try
-        //    {
-        //        Console.WriteLine($"[DLL Update] 开始独立检查 DLL 更新");
-        //        Console.WriteLine($"[DLL Update] 启动路径: {startupPath}");
-        //        Console.WriteLine($"[DLL Update] Base URL: {dllUpdateBaseUrl}");
 
-        //        string manifestUrl = $"{dllUpdateBaseUrl}dlls.json";
-        //        var response = await _httpClient.GetAsync(manifestUrl);
-        //        response.EnsureSuccessStatusCode();
-        //        string json = await response.Content.ReadAsStringAsync();
-        //        var manifest = JsonSerializer.Deserialize<DllManifest>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-
-        //        if (manifest?.Dlls == null || manifest.Dlls.Count == 0)
-        //        {
-        //            Console.WriteLine("[DLL Update] 清单为空或解析失败，跳过");
-        //            return;
-        //        }
-
-        //        Console.WriteLine($"[DLL Update] 清单版本: {manifest.Version}，共检查 {manifest.Dlls.Count} 个文件");
-        //        var updateList = new List<DllInfo>();
-
-        //        foreach (var dll in manifest.Dlls)
-        //        {
-        //            string localPath = Path.Combine(startupPath, dll.FileName);
-        //            string? dir = Path.GetDirectoryName(localPath);
-        //            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
-        //                Directory.CreateDirectory(dir);
-
-        //            bool needsUpdate = true;
-        //            if (File.Exists(localPath))
-        //            {
-        //                string localHash = await ComputeFileHashAsync(localPath);
-        //                if (localHash.Equals(dll.Hash, StringComparison.OrdinalIgnoreCase))
-        //                {
-        //                    needsUpdate = false;
-        //                    Console.WriteLine($"[DLL Update] {dll.FileName} 已是最新");
-        //                }
-        //            }
-        //            if (needsUpdate)
-        //            {
-        //                updateList.Add(dll);
-        //                Console.WriteLine($"[DLL Update] 发现需要更新: {dll.FileName}");
-        //            }
-        //        }
-
-        //        if (updateList.Count == 0)
-        //        {
-        //            Console.WriteLine("[DLL Update] 所有 DLL 均为最新版本");
-        //            return;
-        //        }
-
-        //        bool shouldUpdate = false;
-        //        await Dispatcher.UIThread.InvokeAsync(async () =>
-        //        {
-        //            var parameters = new DialogParameters
-        //            {
-        //                { "Title", "DLL 更新" },
-        //                { "Message", $"发现 {updateList.Count} 个 DLL 文件需要更新，是否立即更新？\n\n（此更新与主程序更新完全独立）" }
-        //            };
-        //            var result = await _dialogService.ShowDialogAsync("ConfirmDialog", parameters);
-        //            shouldUpdate = result?.Result == ButtonResult.OK;
-        //        });
-
-        //        if (!shouldUpdate) return;
-
-        //        foreach (var dll in updateList)
-        //        {
-        //            string downloadUrl = string.IsNullOrEmpty(dll.Url) ? $"{dllUpdateBaseUrl}{dll.FileName}" : dll.Url;
-        //            string localPath = Path.Combine(startupPath, dll.FileName);
-        //            string tempPath = localPath + ".tmp";
-
-        //            Console.WriteLine($"[DLL Update] 正在下载 → {dll.FileName}");
-        //            var dllResponse = await _httpClient.GetAsync(downloadUrl);
-        //            dllResponse.EnsureSuccessStatusCode();
-        //            await using (var fs = new FileStream(tempPath, FileMode.Create, FileAccess.Write))
-        //            {
-        //                await dllResponse.Content.CopyToAsync(fs);
-        //            }
-
-        //            string downloadedHash = await ComputeFileHashAsync(tempPath);
-        //            if (!downloadedHash.Equals(dll.Hash, StringComparison.OrdinalIgnoreCase))
-        //            {
-        //                File.Delete(tempPath);
-        //                Console.WriteLine($"[DLL Update] {dll.FileName} 下载哈希验证失败，跳过");
-        //                continue;
-        //            }
-
-        //            if (File.Exists(localPath))
-        //            {
-        //                try { File.Delete(localPath); }
-        //                catch
-        //                {
-        //                    File.Move(localPath, localPath + ".bak", true);
-        //                }
-        //            }
-        //            File.Move(tempPath, localPath);
-        //            Console.WriteLine($"[DLL Update] {dll.FileName} 更新成功");
-        //        }
-
-        //        Console.WriteLine("[DLL Update] DLL 独立更新全部完成！");
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        Console.WriteLine($"[DLL Update] 独立更新失败：{ex.Message}");
-        //    }
-        //}
-
-        // ==================== 【新增】支持全平台上传的核心方法（已去重）====================
+        // ==================== DLL 上傳核心方法 ========================
         public async Task<bool> PublishNewDllVersionAsync(string version, string dllFilePaths,
             string updateDescription, string codeDescription, string targetRid)
         {
-            if (string.IsNullOrWhiteSpace(version))
+            if (string.IsNullOrWhiteSpace(version) || string.IsNullOrWhiteSpace(targetRid))
             {
-                Console.WriteLine("[DLL Upload] 版本号不能为空");
-                return false;
-            }
-            if (string.IsNullOrWhiteSpace(targetRid))
-            {
-                Console.WriteLine("[DLL Upload] 必须选择目标平台 RID");
+                Console.WriteLine("[DLL Upload] 版本號或目標平台不能為空");
                 return false;
             }
 
-            string baseUrl = $"http://interior.topmix.net/info/system/software/ODProxl/{targetRid}/";
+            string baseUrl = $"http://interior.topmix.net/info/system/software/ODProxl/DLLUpdater/{targetRid}/";
+
             string manifestUrl = $"{baseUrl}dlls.json";
-
-            Console.WriteLine($"[DLL Upload] 开始发布 DLL 版本 {version}，目标平台: {targetRid}");
+            Console.WriteLine($"[DLL Upload] 開始發布版本 {version} → 平台: {targetRid}，路徑: {baseUrl}");
 
             DllManifest manifest = await GetOrCreateManifestAsync(manifestUrl);
 
-            var paths = dllFilePaths.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+            var paths = dllFilePaths.Split(',', StringSplitOptions.RemoveEmptyEntries)
                 .Select(p => p.Trim()).Where(p => !string.IsNullOrEmpty(p)).ToList();
 
             string localManifestPath = paths.FirstOrDefault(p => p.EndsWith(".json", StringComparison.OrdinalIgnoreCase));
 
-            if (localManifestPath != null)
+            if (localManifestPath != null && File.Exists(localManifestPath))
             {
                 string json = await File.ReadAllTextAsync(localManifestPath);
-                manifest = JsonSerializer.Deserialize<DllManifest>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new DllManifest();
+                manifest = JsonSerializer.Deserialize<DllManifest>(json,
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new DllManifest();
                 manifest.Version = version;
-                Console.WriteLine($"[DLL Upload] 使用本地清单文件 {localManifestPath}");
             }
             else
             {
@@ -434,14 +772,7 @@ namespace ODProxl.Services.impls
             }
 
             await UploadManifestAsync(manifestUrl, manifest);
-
-            if (!string.IsNullOrWhiteSpace(updateDescription) || !string.IsNullOrWhiteSpace(codeDescription))
-            {
-                Console.WriteLine($"[DLL Upload] 更新说明: {updateDescription}");
-                Console.WriteLine($"[DLL Upload] 代码说明: {codeDescription}");
-            }
-
-            Console.WriteLine($"[DLL Upload] ✅ DLL 版本 {version} 已成功发布到 {targetRid}！");
+            Console.WriteLine($"[DLL Upload] ✅ 版本 {version} 已成功發布到 {targetRid}！");
             return true;
         }
 
@@ -453,7 +784,8 @@ namespace ODProxl.Services.impls
                 if (response.IsSuccessStatusCode)
                 {
                     string json = await response.Content.ReadAsStringAsync();
-                    return JsonSerializer.Deserialize<DllManifest>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new DllManifest();
+                    return JsonSerializer.Deserialize<DllManifest>(json,
+                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new DllManifest();
                 }
             }
             catch { }
@@ -478,7 +810,7 @@ namespace ODProxl.Services.impls
             manifest.Dlls.Add(dllInfo);
 
             await UploadFileAsync($"{baseUrl}{fileName}", localPath);
-            Console.WriteLine($"[DLL Upload] 已上传 {fileName} (hash: {hash.Substring(0, 8)}...)");
+            Console.WriteLine($"[DLL Upload] 已上傳 {fileName}");
         }
 
         private async Task UploadFileAsync(string url, string localFilePath)
@@ -495,9 +827,38 @@ namespace ODProxl.Services.impls
         {
             string json = JsonSerializer.Serialize(manifest, new JsonSerializerOptions { WriteIndented = true });
             using var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
-
             var response = await _httpClient.PutAsync(url, content);
             response.EnsureSuccessStatusCode();
+        }
+
+        // ==================== 修正點 2：改為非靜態方法 ========================
+        private async Task<string> GetLatestVersionFromGitHubAsync()
+        {
+            try
+            {
+                var response = await _httpClient.GetAsync("https://api.github.com/repos/cypwlp/ODProxl/releases/latest");
+                response.EnsureSuccessStatusCode();
+                var json = await response.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(json);
+                if (doc.RootElement.TryGetProperty("tag_name", out var tag))
+                {
+                    string version = tag.GetString() ?? "";
+                    return version.StartsWith("v") ? version.Substring(1) : version;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[GetLatestVersion] 失敗：{ex.Message}");
+            }
+            return string.Empty;
+        }
+
+        private static async Task<string> ComputeFileHashAsync(string filePath)
+        {
+            using var sha256 = System.Security.Cryptography.SHA256.Create();
+            await using var stream = File.OpenRead(filePath);
+            byte[] hash = await sha256.ComputeHashAsync(stream);
+            return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
         }
     }
 }

@@ -16,6 +16,7 @@ using Prism.Navigation.Regions;
 using RemoteService;
 using System;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -37,13 +38,21 @@ namespace ODProxl
             containerRegistry.RegisterForNavigation<MainWin, MainWinViewModel>();
             containerRegistry.RegisterForNavigation<HomePage, HomePageViewModel>();
             containerRegistry.RegisterSingleton<IDataService>(provider => new DataService("http://www.topmix.net/dataservice/GetData.asmx"));
+            //containerRegistry.RegisterSingleton<HttpClient>(provider =>
+            //{
+            //    var client = new HttpClient();
+            //    client.BaseAddress = new Uri("http://interior.topmix.net/info/system/software/ODProxl/");
+            //    var authToken = Convert.ToBase64String(Encoding.ASCII.GetBytes("Administrator:wingfat@790811"));
+            //    client.DefaultRequestHeaders.Authorization =
+            //        new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", authToken);
+            //    return client;
+            //});
             containerRegistry.RegisterSingleton<HttpClient>(provider =>
             {
                 var client = new HttpClient();
                 client.BaseAddress = new Uri("http://interior.topmix.net/info/system/software/ODProxl/");
                 var authToken = Convert.ToBase64String(Encoding.ASCII.GetBytes("Administrator:wingfat@790811"));
-                client.DefaultRequestHeaders.Authorization =
-                    new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", authToken);
+                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", authToken);
                 return client;
             });
             containerRegistry.RegisterSingleton<INotificationService, NotificationService>();
