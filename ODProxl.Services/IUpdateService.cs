@@ -16,5 +16,7 @@ namespace ODProxl.Services
         /// 【新增】Velopack 發布：git commit + tag + push
         /// </summary>
         Task<bool> PublishVelopackVersionAsync(string version, string updateDescription, string codeDescription);
+
+        Task<string> GetLatestVersionFromGitHubAsync();
     }
 }

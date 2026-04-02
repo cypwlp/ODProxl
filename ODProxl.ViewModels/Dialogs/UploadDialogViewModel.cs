@@ -20,12 +20,11 @@ namespace ODProxl.ViewModels.Dialogs
                 "linux-x64", "linux-arm64"
             };
             SelectedRid = "所有平台 (All Platforms)";
-            Version = "v1.0.1";
-
+            Version = 1.0.ToString();
+            LoadLatestVersionAsync().ConfigureAwait(false);
             ConfirmCommand = new DelegateCommand(async () => await ExecuteConfirmAsync(), CanExecuteConfirm)
                 .ObservesProperty(() => Version)
                 .ObservesProperty(() => SelectedRid);
-
             CancelCommand = new DelegateCommand(ExecuteCancel);
         }
 
@@ -37,7 +36,7 @@ namespace ODProxl.ViewModels.Dialogs
             set => SetProperty(ref _selectedRid, value);
         }
 
-        private string _version = "v1.0.1";
+        private string _version;
         public string Version
         {
             get => _version;
@@ -128,6 +127,23 @@ namespace ODProxl.ViewModels.Dialogs
                 RequestClose.Invoke(new DialogResult(ButtonResult.OK));
             }
         }
+        private async Task LoadLatestVersionAsync()
+        {
+            try
+            {
+                // 假设 UpdateService 中已公开 GetLatestVersionAsync 方法
+                string latestVersion = await _updateService.GetLatestVersionFromGitHubAsync();
+                if (!string.IsNullOrEmpty(latestVersion))
+                {
+                    Version = latestVersion;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"获取最新版本失败: {ex.Message}");
+            }
+        }
+
 
         private void ExecuteCancel()
         {

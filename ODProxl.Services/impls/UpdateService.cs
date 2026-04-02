@@ -385,7 +385,7 @@ namespace ODProxl.Services.impls
             response.EnsureSuccessStatusCode();
         }
 
-        private async Task<string> GetLatestVersionFromGitHubAsync()
+        public async Task<string> GetLatestVersionFromGitHubAsync()
         {
             try
             {
