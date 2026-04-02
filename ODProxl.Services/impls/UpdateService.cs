@@ -130,10 +130,130 @@ namespace ODProxl.Services.impls
             }
             Environment.Exit(0);
         }
+        //private async Task DLLUpdateAsync(IProgress<UpdateProgress> progress)
+        //{
+        //    string rid = PlatformHelper.GetCurrentRid();
+        //    string baseDir = AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar);
+        //    string dllUpdateBaseUrl = $"http://interior.topmix.net/info/system/software/ODProxl/DLLUpdater/{rid}/";
+        //    string manifestUrl = $"{dllUpdateBaseUrl}dlls.json";
+
+        //    var response = await _httpClient.GetAsync(manifestUrl);
+        //    response.EnsureSuccessStatusCode();
+        //    string json = await response.Content.ReadAsStringAsync();
+        //    var manifest = JsonSerializer.Deserialize<DllManifest>(json,
+        //        new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        //    if (manifest?.Dlls == null || manifest.Dlls.Count == 0) return;
+
+        //    // 构建需要更新的文件列表
+        //    var updateList = new List<DllInfo>();
+        //    foreach (var dll in manifest.Dlls)
+        //    {
+        //        string localPath = Path.Combine(baseDir, dll.FileName);
+        //        if (File.Exists(localPath))
+        //        {
+        //            string localHash = await ComputeFileHashAsync(localPath);
+        //            if (localHash.Equals(dll.Hash, StringComparison.OrdinalIgnoreCase))
+        //                continue;
+        //        }
+        //        updateList.Add(dll);
+        //    }
+        //    if (updateList.Count == 0) return;
+
+        //    // 准备暂存目录
+        //    string pendingDir = Path.Combine(baseDir, "PendingUpdate");
+        //    Directory.CreateDirectory(pendingDir);
+
+        //    long totalBytes = updateList.Sum(d => d.Size);
+        //    long downloadedBytes = 0;
+        //    var pendingFiles = new List<UpdateFile>();
+
+        //    progress.Report(new UpdateProgress { Percentage = -1, StatusText = "准备下载更新文件..." });
+
+        //    foreach (var dll in updateList)
+        //    {
+        //        string downloadUrl = string.IsNullOrEmpty(dll.Url) ? $"{dllUpdateBaseUrl}{dll.FileName}" : dll.Url;
+        //        string tempFilePath = Path.Combine(pendingDir, dll.FileName);  // 直接保存到 PendingUpdate
+
+        //        using var httpResponse = await _httpClient.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead);
+        //        httpResponse.EnsureSuccessStatusCode();
+        //        long? contentLength = httpResponse.Content.Headers.ContentLength;
+        //        using var contentStream = await httpResponse.Content.ReadAsStreamAsync();
+        //        using var fileStream = new FileStream(tempFilePath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true);
+
+        //        byte[] buffer = new byte[8192];
+        //        long bytesRead = 0;
+        //        int read;
+        //        while ((read = await contentStream.ReadAsync(buffer)) > 0)
+        //        {
+        //            await fileStream.WriteAsync(buffer.AsMemory(0, read));
+        //            bytesRead += read;
+        //            if (contentLength.HasValue && contentLength.Value > 0)
+        //            {
+        //                int filePercent = (int)(bytesRead * 100 / contentLength.Value);
+        //                int totalPercent = totalBytes > 0 ? (int)((downloadedBytes + bytesRead) * 100 / totalBytes) : -1;
+        //                progress.Report(new UpdateProgress
+        //                {
+        //                    Percentage = totalPercent,
+        //                    StatusText = $"正在下载 {dll.FileName} ({filePercent}%)",
+        //                    CurrentFile = dll.FileName
+        //                });
+        //            }
+        //            else
+        //            {
+        //                progress.Report(new UpdateProgress
+        //                {
+        //                    Percentage = -1,
+        //                    StatusText = $"正在下载 {dll.FileName}...",
+        //                    CurrentFile = dll.FileName
+        //                });
+        //            }
+        //        }
+
+        //        // 哈希校验
+        //        if (!string.Equals(await ComputeFileHashAsync(tempFilePath), dll.Hash, StringComparison.OrdinalIgnoreCase))
+        //        {
+        //            File.Delete(tempFilePath);
+        //            throw new Exception($"文件 {dll.FileName} 哈希校验失败");
+        //        }
+
+        //        pendingFiles.Add(new UpdateFile
+        //        {
+        //            Source = Path.Combine("PendingUpdate", dll.FileName),
+        //            Dest = dll.FileName
+        //        });
+
+        //        downloadedBytes += dll.Size;
+        //    }
+
+        //    // 生成 pending.json
+        //    await PreparePendingUpdateAsync(manifest.Version, pendingFiles);
+
+        //    // 报告最终进度，然后启动更新器并退出
+        //    progress.Report(new UpdateProgress { Percentage = 100, StatusText = "下载完成，正在准备更新..." });
+        //    await Task.Delay(500); // 让UI有机会显示最后一条消息
+        //    StartUpdaterAndExit();
+        //}
         private async Task DLLUpdateAsync(IProgress<UpdateProgress> progress)
         {
             string rid = PlatformHelper.GetCurrentRid();
             string baseDir = AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar);
+            string pendingDir = Path.Combine(baseDir, "PendingUpdate");
+
+            // ★★★ 關鍵修正：每次更新前強制刪除舊的 PendingUpdate 資料夾 ★★★
+            if (Directory.Exists(pendingDir))
+            {
+                try
+                {
+                    Directory.Delete(pendingDir, true);
+                    Console.WriteLine("[DLLUpdate] 已成功清理舊的 PendingUpdate 資料夾");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[DLLUpdate] 清理 PendingUpdate 時發生警告（可忽略）：{ex.Message}");
+                }
+            }
+            Directory.CreateDirectory(pendingDir);
+
             string dllUpdateBaseUrl = $"http://interior.topmix.net/info/system/software/ODProxl/DLLUpdater/{rid}/";
             string manifestUrl = $"{dllUpdateBaseUrl}dlls.json";
 
@@ -142,9 +262,10 @@ namespace ODProxl.Services.impls
             string json = await response.Content.ReadAsStringAsync();
             var manifest = JsonSerializer.Deserialize<DllManifest>(json,
                 new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
             if (manifest?.Dlls == null || manifest.Dlls.Count == 0) return;
 
-            // 构建需要更新的文件列表
+            // 構建需要更新的檔案清單
             var updateList = new List<DllInfo>();
             foreach (var dll in manifest.Dlls)
             {
@@ -157,26 +278,24 @@ namespace ODProxl.Services.impls
                 }
                 updateList.Add(dll);
             }
-            if (updateList.Count == 0) return;
 
-            // 准备暂存目录
-            string pendingDir = Path.Combine(baseDir, "PendingUpdate");
-            Directory.CreateDirectory(pendingDir);
+            if (updateList.Count == 0) return;
 
             long totalBytes = updateList.Sum(d => d.Size);
             long downloadedBytes = 0;
             var pendingFiles = new List<UpdateFile>();
 
-            progress.Report(new UpdateProgress { Percentage = -1, StatusText = "准备下载更新文件..." });
+            progress.Report(new UpdateProgress { Percentage = -1, StatusText = "準備下載更新檔案..." });
 
             foreach (var dll in updateList)
             {
                 string downloadUrl = string.IsNullOrEmpty(dll.Url) ? $"{dllUpdateBaseUrl}{dll.FileName}" : dll.Url;
-                string tempFilePath = Path.Combine(pendingDir, dll.FileName);  // 直接保存到 PendingUpdate
+                string tempFilePath = Path.Combine(pendingDir, dll.FileName);
 
                 using var httpResponse = await _httpClient.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead);
                 httpResponse.EnsureSuccessStatusCode();
                 long? contentLength = httpResponse.Content.Headers.ContentLength;
+
                 using var contentStream = await httpResponse.Content.ReadAsStreamAsync();
                 using var fileStream = new FileStream(tempFilePath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true);
 
@@ -187,6 +306,7 @@ namespace ODProxl.Services.impls
                 {
                     await fileStream.WriteAsync(buffer.AsMemory(0, read));
                     bytesRead += read;
+
                     if (contentLength.HasValue && contentLength.Value > 0)
                     {
                         int filePercent = (int)(bytesRead * 100 / contentLength.Value);
@@ -194,7 +314,7 @@ namespace ODProxl.Services.impls
                         progress.Report(new UpdateProgress
                         {
                             Percentage = totalPercent,
-                            StatusText = $"正在下载 {dll.FileName} ({filePercent}%)",
+                            StatusText = $"正在下載 {dll.FileName} ({filePercent}%)",
                             CurrentFile = dll.FileName
                         });
                     }
@@ -203,17 +323,17 @@ namespace ODProxl.Services.impls
                         progress.Report(new UpdateProgress
                         {
                             Percentage = -1,
-                            StatusText = $"正在下载 {dll.FileName}...",
+                            StatusText = $"正在下載 {dll.FileName}...",
                             CurrentFile = dll.FileName
                         });
                     }
                 }
 
-                // 哈希校验
+                // 哈希校驗
                 if (!string.Equals(await ComputeFileHashAsync(tempFilePath), dll.Hash, StringComparison.OrdinalIgnoreCase))
                 {
                     File.Delete(tempFilePath);
-                    throw new Exception($"文件 {dll.FileName} 哈希校验失败");
+                    throw new Exception($"檔案 {dll.FileName} 哈希校驗失敗");
                 }
 
                 pendingFiles.Add(new UpdateFile
@@ -221,19 +341,15 @@ namespace ODProxl.Services.impls
                     Source = Path.Combine("PendingUpdate", dll.FileName),
                     Dest = dll.FileName
                 });
-
                 downloadedBytes += dll.Size;
             }
 
-            // 生成 pending.json
             await PreparePendingUpdateAsync(manifest.Version, pendingFiles);
 
-            // 报告最终进度，然后启动更新器并退出
-            progress.Report(new UpdateProgress { Percentage = 100, StatusText = "下载完成，正在准备更新..." });
-            await Task.Delay(500); // 让UI有机会显示最后一条消息
+            progress.Report(new UpdateProgress { Percentage = 100, StatusText = "下載完成，正在準備更新..." });
+            await Task.Delay(500);
             StartUpdaterAndExit();
         }
-
         private async Task PreparePendingUpdateAsync(string version, List<UpdateFile> files)
         {
             string baseDir = AppContext.BaseDirectory;

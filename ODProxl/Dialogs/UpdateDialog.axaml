@@ -3,17 +3,31 @@
 			 xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
 			 xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
 			 xmlns:avalonia="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
-			 mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="280"
+			 mc:Ignorable="d"
+			 d:DesignWidth="400"
+			 d:DesignHeight="280"
 			 x:Class="ODProxl.UpdateDialog">
+
 	<Border Background="{DynamicResource SystemRegionBrush}"
 			CornerRadius="12"
 			Padding="24">
 		<Grid RowDefinitions="Auto, Auto, Auto, Auto">
-			<StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="12" Margin="0,0,0,16">
-				<avalonia:MaterialIcon Kind="Update" Width="28" Height="28" Foreground="{DynamicResource SystemAccentColor}"/>
-				<TextBlock Text="{Binding DialogTitle}" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center"/>
+
+			<!-- 標題 -->
+			<StackPanel Grid.Row="0"
+						Orientation="Horizontal"
+						Spacing="12"
+						Margin="0,0,0,16">
+				<avalonia:MaterialIcon Kind="Update"
+									   Width="28" Height="28"
+									   Foreground="{DynamicResource SystemAccentColor}"/>
+				<TextBlock Text="{Binding DialogTitle}"
+						   FontSize="18"
+						   FontWeight="SemiBold"
+						   VerticalAlignment="Center"/>
 			</StackPanel>
 
+			<!-- 更新訊息（尚未開始更新時顯示） -->
 			<TextBlock Grid.Row="1"
 					   Text="{Binding UpdateMessage}"
 					   FontSize="14"
@@ -22,23 +36,42 @@
 					   Opacity="0.8"
 					   IsVisible="{Binding !IsUpdating}"/>
 
-			<StackPanel Grid.Row="2" IsVisible="{Binding IsUpdating}" Spacing="12">
+			<!-- Material 進度條區域（更新中顯示） -->
+			<StackPanel Grid.Row="2"
+						IsVisible="{Binding IsUpdating}"
+						Spacing="12">
+
+				<!-- MaterialProgressBar（細長、圓角、漂亮顏色） -->
 				<ProgressBar Value="{Binding ProgressValue}"
 							 IsIndeterminate="{Binding IsIndeterminate}"
 							 Minimum="0" Maximum="100"
-							 Height="20" ShowProgressText="True"/>
+							 Height="8"
+							 CornerRadius="4"
+							 Background="{DynamicResource MaterialDividerBrush}"
+							 Foreground="{DynamicResource MaterialPrimaryBrush}"
+							 Classes="Material"
+							 ShowProgressText="False" />
+
+				<!-- 漂亮的進度文字 -->
 				<TextBlock Text="{Binding ProgressText}"
 						   FontSize="13"
 						   TextWrapping="Wrap"
+						   HorizontalAlignment="Center"
 						   Foreground="{DynamicResource SystemBaseHighColor}"
 						   Opacity="0.7"/>
 			</StackPanel>
 
-			<StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="12" Margin="0,24,0,0">
-				<Button Content="暂时不要"
+			<!-- 按鈕區域 -->
+			<StackPanel Grid.Row="3"
+						Orientation="Horizontal"
+						HorizontalAlignment="Right"
+						Spacing="12"
+						Margin="0,24,0,0">
+				<Button Content="暫時不要"
 						Command="{Binding CancelCommand}"
 						Theme="{StaticResource MaterialFlatButton}"
 						IsVisible="{Binding !IsUpdating}"/>
+
 				<Button Background="{DynamicResource SystemAccentColor}"
 						Foreground="White"
 						Command="{Binding UpdateCommand}"
