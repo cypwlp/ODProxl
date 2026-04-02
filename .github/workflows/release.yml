@@ -11,6 +11,7 @@ jobs:
     name: Publish for ${{ matrix.rid }}
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false                    # ← 新增：避免一個平台失敗就取消全部
       matrix:
         include:
           - os: windows-latest
@@ -25,8 +26,10 @@ jobs:
           - os: ubuntu-22.04
             rid: linux-x64
             executable: ODProxl
+
     permissions:
       contents: write
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -78,7 +81,6 @@ jobs:
       - name: Publish Application (Main Program)
         run: dotnet publish -c Release --runtime ${{ matrix.rid }} --self-contained true -o ./publish
 
-      # ==================== 新增：同時打包 ODProxl.Updater ====================
       - name: Publish Updater (ODProxl.Updater)
         run: |
           dotnet publish ODProxl.Updater/ODProxl.Updater.csproj \
@@ -93,12 +95,14 @@ jobs:
           echo "=== Checking Updater in ./publish ==="
           ls -la ./publish/ODProxl.Updater* 2>/dev/null || echo "⚠️ Updater executable not found!"
           echo "Updater publish completed."
-      # =====================================================================
 
       - name: Sync Previous Releases (Delta Updates)
         continue-on-error: true
         run: |
-          vpk download github --repoUrl https://github.com/${{ github.repository }} --outputDir ./Releases
+          vpk download github \
+            --repoUrl https://github.com/${{ github.repository }} \
+            --outputDir ./Releases \
+            --token ${{ secrets.GITHUB_TOKEN }}          # ← 新增 token 解決 rate limit
 
       - name: Velopack Pack
         shell: bash
@@ -135,22 +139,6 @@ jobs:
         run: ls -la ./Releases
         shell: bash
 
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
-        with:
-          files: |
-            ./Releases/*.exe
-            ./Releases/*.nupkg
-            ./Releases/*.pkg
-            ./Releases/*.zip
-            ./Releases/*.AppImage
-            ./Releases/RELEASES*
-            ./Releases/releases.*.json
-          tag_name: ${{ github.ref_name }}
-          generate_release_notes: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Upload Artifact (Releases)
         uses: actions/upload-artifact@v4
         with:
@@ -158,7 +146,48 @@ jobs:
           path: ./Releases
           if-no-files-found: error
 
-  # 同步到國內 WebDAV 伺服器（每個版本獨立資料夾）
+  # ====================== 新增：統一建立 GitHub Release ======================
+  create-github-release:
+    name: Create GitHub Release
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./all_releases
+
+      - name: Merge Releases
+        run: |
+          mkdir -p ./merged_releases
+          for rid_dir in ./all_releases/releases-*; do
+            if [ -d "$rid_dir" ]; then
+              echo "Copying $rid_dir to ./merged_releases"
+              cp -r "$rid_dir"/* ./merged_releases/
+            fi
+          done
+          ls -la ./merged_releases
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2        # ← 更新為 v2
+        with:
+          files: |
+            ./merged_releases/*.exe
+            ./merged_releases/*.nupkg
+            ./merged_releases/*.pkg
+            ./merged_releases/*.zip
+            ./merged_releases/*.AppImage
+            ./merged_releases/RELEASES*
+            ./merged_releases/releases.*.json
+          tag_name: ${{ github.ref_name }}
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ====================== 原有國內同步 job（完全不變） ======================
   sync-to-china:
     name: Sync to China Server (WebDAV)
     needs: publish
@@ -196,12 +225,8 @@ jobs:
           buffer_size = 64M
           chunk_size = 32M
           EOF
-
-          # 取得版本號（去掉 v）
           VERSION="${GITHUB_REF_NAME#v}"
-
           echo "正在上傳版本 $VERSION 到獨立資料夾"
-
           rclone copy ./merged_releases webdav:/${VERSION}/ \
             --progress \
             --transfers 12 \
