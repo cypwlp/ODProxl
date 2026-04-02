@@ -45,11 +45,11 @@ namespace ODProxl.ViewModels.Dialogs
         private bool _isChecking;
         public string UpdateButtonText => IsChecking ? "正在檢查..." : "檢查更新";
         public MaterialIconKind UpdateIcon => IsChecking ? MaterialIconKind.Refresh : MaterialIconKind.Update;
-        public AboutDialogViewModel(IDialogService dialogService,IUpdateService updateService,IGeoLocationService geoLocationService)
+        public AboutDialogViewModel(IDialogService dialogService, IUpdateService updateService, IGeoLocationService geoLocationService)
         {
             _dialogService = dialogService;
             _updateService = updateService;
-            _geoLocationService=geoLocationService;
+            _geoLocationService = geoLocationService;
             GetCurrentVersion();
             CheckUpdateCommand = new DelegateCommand(async () => await CheckForUpdatesInternalAsync());
         }
@@ -81,7 +81,7 @@ namespace ODProxl.ViewModels.Dialogs
         #endregion
 
         #region 檢查邏輯
-        private  async Task CheckForUpdatesInternalAsync()
+        private async Task CheckForUpdatesInternalAsync()
         {
             if (IsChecking) return;
             IsChecking = true;
@@ -119,12 +119,10 @@ namespace ODProxl.ViewModels.Dialogs
         {
             try
             {
-                // 使用執行中的組件版本（推薦方式，不依賴特定類別名稱）
                 var assembly = System.Reflection.Assembly.GetExecutingAssembly();
                 var version = assembly.GetName().Version;
                 CurrentVersion = version?.ToString(3) ?? "開發版本";
 
-                // 如果已經用 Velopack 打包安裝，優先顯示 Velopack 的版本
                 try
                 {
                     var mgr = new UpdateManager(new Velopack.Sources.SimpleWebSource("http://127.0.0.1/dummy"));
@@ -135,7 +133,6 @@ namespace ODProxl.ViewModels.Dialogs
                 }
                 catch
                 {
-                    // 忽略開發階段或 dummy source 產生的錯誤
                 }
             }
             catch (Exception)

@@ -23,14 +23,11 @@ using System.Threading.Tasks;
 using Velopack;
 using Velopack.Sources;
 
-
-
 namespace ODProxl
 {
     public partial class App : PrismApplication
     {
         protected override AvaloniaObject CreateShell() => null!;
-
 
         protected override void RegisterTypes(IContainerRegistry containerRegistry)
         {
@@ -38,15 +35,7 @@ namespace ODProxl
             containerRegistry.RegisterForNavigation<MainWin, MainWinViewModel>();
             containerRegistry.RegisterForNavigation<HomePage, HomePageViewModel>();
             containerRegistry.RegisterSingleton<IDataService>(provider => new DataService("http://www.topmix.net/dataservice/GetData.asmx"));
-            //containerRegistry.RegisterSingleton<HttpClient>(provider =>
-            //{
-            //    var client = new HttpClient();
-            //    client.BaseAddress = new Uri("http://interior.topmix.net/info/system/software/ODProxl/");
-            //    var authToken = Convert.ToBase64String(Encoding.ASCII.GetBytes("Administrator:wingfat@790811"));
-            //    client.DefaultRequestHeaders.Authorization =
-            //        new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", authToken);
-            //    return client;
-            //});
+
             containerRegistry.RegisterSingleton<HttpClient>(provider =>
             {
                 var client = new HttpClient();
@@ -55,14 +44,15 @@ namespace ODProxl
                 client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", authToken);
                 return client;
             });
+
             containerRegistry.RegisterSingleton<INotificationService, NotificationService>();
             containerRegistry.Register<IGeoLocationService, GeoLocationService>();
             containerRegistry.Register<IDialogService, DialogService>();
             containerRegistry.Register<IUpdateService, UpdateService>();
-            containerRegistry.Register<IOnnxModelAnalyzer,OnnxModelAnalyzer>();
-            containerRegistry.Register<IOnnxModelInspector, OnnxModelInspector>();          
+            containerRegistry.Register<IOnnxModelAnalyzer, OnnxModelAnalyzer>();
+            containerRegistry.Register<IOnnxModelInspector, OnnxModelInspector>();
             containerRegistry.RegisterDialog<UpdateDialog, UpdateDialogViewModel>();
-            containerRegistry.RegisterDialog<AboutDialog,AboutDialogViewModel>();
+            containerRegistry.RegisterDialog<AboutDialog, AboutDialogViewModel>();
             containerRegistry.RegisterDialog<UploadDialog, UploadDialogViewModel>();
             containerRegistry.RegisterDialog<InputDialog, InputDialogViewModel>("InputDialog");
             containerRegistry.RegisterForNavigation<OnnxModelMSPage, OnnxModelMSPageViewModel>();
@@ -73,6 +63,10 @@ namespace ODProxl
 
         private async Task CheckForUpdatesAsync()
         {
+            if (System.Diagnostics.Debugger.IsAttached)
+            {
+                return;
+            }
             string countryCode;
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
             var geoLocationService = Container.Resolve<IGeoLocationService>();
@@ -80,6 +74,7 @@ namespace ODProxl
             var updateService = Container.Resolve<IUpdateService>();
             await updateService.UpdateODProxlAsync(countryCode);
         }
+
         private async Task StartWithLoginAsync(IClassicDesktopStyleApplicationLifetime desktopLifetime)
         {
             var splashWindow = new Window
@@ -94,39 +89,24 @@ namespace ODProxl
             desktopLifetime.MainWindow = splashWindow;
 
             var dialogService = Container.Resolve<IDialogService>();
-
             dialogService.ShowDialog("LoginDialog", null, async result =>
             {
                 if (result?.Result == ButtonResult.OK)
                 {
-                    //if (result.Parameters.TryGetValue<RemoteDBTools>("dbtools", out var dbtools) &&
-                    //    result.Parameters.TryGetValue<LogUserInfo>("LogUser", out var logUser))
-                    //{
-                        var mainWin = Container.Resolve<MainWin>();
-                        var vm = Container.Resolve<MainWinViewModel>();
-                        //vm.LogUser = logUser;
-                        //vm.RemoteDBTools = dbtools;
-                        vm.LoginInfo= result.Parameters.GetValue<LoginInfo>("LoginInfo");
-                        mainWin.DataContext = vm;
+                    var mainWin = Container.Resolve<MainWin>();
+                    var vm = Container.Resolve<MainWinViewModel>();
+                    vm.LoginInfo = result.Parameters.GetValue<LoginInfo>("LoginInfo");
+                    mainWin.DataContext = vm;
 
-                        var regionManager = Container.Resolve<IRegionManager>();
-                        RegionManager.SetRegionManager(mainWin, regionManager);
+                    var regionManager = Container.Resolve<IRegionManager>();
+                    RegionManager.SetRegionManager(mainWin, regionManager);
+                    mainWin.Show();
+                    desktopLifetime.MainWindow = mainWin;
 
-                        mainWin.Show();
-                        desktopLifetime.MainWindow = mainWin;
-
-                        await vm.DefaultNavigateAsync();
-
-                        _ = CheckForUpdatesAsync();
-
-                        splashWindow.Close();
-                    //}
-                    //else
-                    //{
-                    //    splashWindow.Close();
-                    //    desktopLifetime.Shutdown();
-                    //}
-               }
+                    await vm.DefaultNavigateAsync();
+                    _ = CheckForUpdatesAsync();     // 正式版才會檢查
+                    splashWindow.Close();
+                }
                 else
                 {
                     splashWindow.Close();
@@ -134,6 +114,7 @@ namespace ODProxl
                 }
             });
         }
+
         public override void OnFrameworkInitializationCompleted()
         {
             if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktopLifetime)

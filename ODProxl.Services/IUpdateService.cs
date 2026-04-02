@@ -1,10 +1,11 @@
-﻿using System.Threading.Tasks;
+﻿using ODProxl.EntityModels;
+using System.Threading.Tasks;
 
 namespace ODProxl.Services
 {
     public interface IUpdateService
     {
-        Task UpdateODProxlAsync(string countryCode);
+        Task UpdateODProxlAsync(string countryCode, IProgress<UpdateProgress>? progress = null);
 
         /// <summary>
         /// 發布新的 DLL 更新版本（支持單平台或所有平台）

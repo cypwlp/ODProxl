@@ -1,4 +1,5 @@
 name: Publish Release
+
 on:
   push:
     tags:
@@ -74,8 +75,25 @@ jobs:
             echo "BUNDLE_ID=" >> $GITHUB_ENV
           fi
 
-      - name: Publish Application
+      - name: Publish Application (Main Program)
         run: dotnet publish -c Release --runtime ${{ matrix.rid }} --self-contained true -o ./publish
+
+      # ==================== 新增：同時打包 ODProxl.Updater ====================
+      - name: Publish Updater (ODProxl.Updater)
+        run: |
+          dotnet publish ODProxl.Updater/ODProxl.Updater.csproj \
+            -c Release \
+            --runtime ${{ matrix.rid }} \
+            --self-contained true \
+            -o ./publish
+
+      - name: Verify Updater exists in publish folder
+        shell: bash
+        run: |
+          echo "=== Checking Updater in ./publish ==="
+          ls -la ./publish/ODProxl.Updater* 2>/dev/null || echo "⚠️ Updater executable not found!"
+          echo "Updater publish completed."
+      # =====================================================================
 
       - name: Sync Previous Releases (Delta Updates)
         continue-on-error: true
