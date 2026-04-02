@@ -62,11 +62,11 @@ namespace ODProxl.ViewModels.Dialogs
         {
             if (string.IsNullOrWhiteSpace(UserName) || string.IsNullOrWhiteSpace(Password))
                 return;
-
+            await Task.Delay(200);
             bool success = await _dataService!.InitializeAsync(UserName!, Password!, "ODProxl");
             try
             {
-                if (success)
+                if (success==true)
                 {
                     var loginInfo = await _dataService.GetLoginInfoAsync();
                     var paras = new DialogParameters { { "LoginInfo", loginInfo } };

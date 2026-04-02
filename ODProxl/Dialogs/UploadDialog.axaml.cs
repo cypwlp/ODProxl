@@ -1,82 +1,8 @@
-//using Avalonia;
-//using Avalonia.Controls;
-//using Avalonia.Interactivity;
-//using Avalonia.Markup.Xaml;
-//using Avalonia.Platform.Storage;
-//using ODProxl.ViewModels.Dialogs;
-//using System.Linq;
-
-//namespace ODProxl;
-
-//public partial class UploadDialog : UserControl
-//{
-//    public UploadDialog()
-//    {
-//        InitializeComponent();
-//    }
-//    private void TitleBar_PointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e)
-//    {
-//        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
-//        {
-//            // 如果这个 UserControl 是放在 Window 里的，通过 VisualRoot 获取 Window 并拖动
-//            if (VisualRoot is Window window)
-//            {
-//                window.BeginMoveDrag(e);
-//            }
-//        }
-//    }
-
-//    private void SelectDllFiles_Click(object sender, Avalonia.Interactivity.RoutedEventArgs e)
-//    {
-//        // TODO: 實作檔案選擇器
-//        var dialog = new OpenFileDialog
-//        {
-//            AllowMultiple = true,
-//            Filters = { new FileDialogFilter { Name = "DLL Files", Extensions = { "dll", "json" } } }
-//        };
-
-//        var window = (Window)this.VisualRoot!;
-//        var files = dialog.ShowAsync(window).Result;
-//        if (files?.Any() == true)
-//        {
-//            var vm = (UploadDialogViewModel)this.DataContext!;
-//            vm.DllFiles = string.Join(",", files);
-//        }
-//    }
-
-//    //private async void SelectDllFiles_Click(object sender, RoutedEventArgs e)
-//    //{
-//    //    var vm = DataContext as UploadDialogViewModel;
-//    //    if (vm == null) return;
-
-//    //    var topLevel = TopLevel.GetTopLevel(this);
-//    //    if (topLevel == null) return;
-
-//    //    var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
-//    //    {
-//    //        Title = "選擇 DLL 檔案或清單文件",
-//    //        AllowMultiple = true,
-//    //        FileTypeFilter = new[]
-//    //        {
-//    //            new FilePickerFileType("DLL / JSON")
-//    //            {
-//    //                Patterns = new[] { "*.dll", "*.json" }
-//    //            }
-//    //        }
-//    //    });
-
-//    //    if (files.Count > 0)
-//    //    {
-//    //        // 自動把選取的完整路徑用逗號串接，填入 TextBox
-//    //        var paths = files.Select(f => f.Path.LocalPath).ToList();
-//    //        vm.DllFiles = string.Join(", ", paths);
-//    //    }
-//    //}
-//}
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
+using Material.Icons;
 using ODProxl.ViewModels.Dialogs;
 using System;
 using System.Linq;
@@ -90,8 +16,18 @@ namespace ODProxl
         {
             InitializeComponent();
         }
+        protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+        {
+            base.OnAttachedToVisualTree(e);
 
-        // 標題欄拖動
+            if (VisualRoot is Window window)
+            {
+                window.SystemDecorations = SystemDecorations.None;
+                window.WindowStartupLocation = WindowStartupLocation.CenterScreen;
+                window.CanResize = false;
+            }
+        }
+        #region 標題欄拖動
         private void TitleBar_PointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e)
         {
             if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
@@ -102,8 +38,42 @@ namespace ODProxl
                 }
             }
         }
+        #endregion
 
-        // 選擇檔案按鈕（已改用現代非阻塞方式）
+        #region 自訂視窗控制按鈕
+        private void BtnMin_Click(object? sender, RoutedEventArgs e)
+        {
+            if (VisualRoot is Window window)
+                window.WindowState = WindowState.Minimized;
+        }
+
+        private void BtnMax_Click(object? sender, RoutedEventArgs e)
+        {
+            if (VisualRoot is Window window)
+            {
+                if (window.WindowState == WindowState.Maximized)
+                    window.WindowState = WindowState.Normal;
+                else
+                    window.WindowState = WindowState.Maximized;
+
+                // 更新最大化/還原圖示
+                if (MaxIcon != null)
+                {
+                    MaxIcon.Kind = window.WindowState == WindowState.Maximized
+                        ? MaterialIconKind.WindowRestore
+                        : MaterialIconKind.WindowMaximize;
+                }
+            }
+        }
+
+        private void BtnClose_Click(object? sender, RoutedEventArgs e)
+        {
+            if (VisualRoot is Window window)
+                window.Close();
+        }
+        #endregion
+
+        #region 選擇 DLL 檔案
         private async void SelectDllFiles_Click(object sender, RoutedEventArgs e)
         {
             var vm = DataContext as UploadDialogViewModel;
@@ -114,11 +84,7 @@ namespace ODProxl
             }
 
             var topLevel = TopLevel.GetTopLevel(this);
-            if (topLevel == null)
-            {
-                Console.WriteLine("[UploadDialog] 無法取得 TopLevel");
-                return;
-            }
+            if (topLevel == null) return;
 
             try
             {
@@ -147,5 +113,6 @@ namespace ODProxl
                 Console.WriteLine($"[UploadDialog] 檔案選擇失敗：{ex.Message}");
             }
         }
+        #endregion
     }
 }

@@ -12,7 +12,7 @@ namespace ODProxl.ViewModels.Dialogs
     public class UploadDialogViewModel : BindableBase, IDialogAware
     {
         private readonly IUpdateService _updateService;
-        private readonly IDialogService _dialogService;   // 用來顯示提示
+        private readonly IDialogService _dialogService;  
 
         public UploadDialogViewModel(IUpdateService updateService, IDialogService dialogService)
         {
@@ -81,53 +81,6 @@ namespace ODProxl.ViewModels.Dialogs
 
         private bool CanExecuteConfirm()
             => !string.IsNullOrWhiteSpace(Version) && !string.IsNullOrWhiteSpace(SelectedRid);
-
-        //private async Task ExecuteConfirmAsync()
-        //{
-        //    try
-        //    {
-        //        // 顯示載入中提示
-        //        var loadingParams = new DialogParameters { { "Message", "正在上傳 DLL，請稍候..." } };
-        //        // 如果你有 LoadingDialog 可以顯示，否則至少 Console 先看到
-        //        Console.WriteLine("[UploadDialog] 開始上傳...");
-
-        //        if (SelectedRid == "所有平台 (All Platforms)")
-        //        {
-        //            var platforms = AvailableRids.Where(r => r != "所有平台 (All Platforms)").ToList();
-        //            Console.WriteLine($"[UploadDialog] 開始同時發布到 {platforms.Count} 個平台...");
-
-        //            foreach (var rid in platforms)
-        //            {
-        //                Console.WriteLine($"[UploadDialog] → 上傳平台: {rid}");
-        //                bool success = await _updateService.PublishNewDllVersionAsync(
-        //                    Version, DllFiles, UpdateDescription, CodeDescription, rid);
-
-        //                if (!success)
-        //                    Console.WriteLine($"[UploadDialog] {rid} 上傳失敗！");
-        //            }
-
-        //            Console.WriteLine($"[UploadDialog] ✅ 所有平台發布完成！");
-        //            await ShowMessageAsync("上傳完成", "所有平台 DLL 已成功發布！", ButtonResult.OK);
-        //        }
-        //        else
-        //        {
-        //            bool success = await _updateService.PublishNewDllVersionAsync(
-        //                Version, DllFiles, UpdateDescription, CodeDescription, SelectedRid);
-
-        //            if (success)
-        //                await ShowMessageAsync("上傳成功", $"版本 {Version} 已成功發布到 {SelectedRid}！", ButtonResult.OK);
-        //            else
-        //                await ShowMessageAsync("上傳失敗", "請查看 Console 輸出詳情", ButtonResult.OK);
-        //        }
-
-        //        RequestClose.Invoke(new DialogResult(ButtonResult.OK));
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        Console.WriteLine($"[UploadDialog] 嚴重錯誤：{ex.Message}");
-        //        await ShowMessageAsync("上傳失敗", $"發生錯誤：{ex.Message}", ButtonResult.OK);
-        //    }
-        //}
         private async Task ExecuteConfirmAsync()
         {
             try
@@ -136,7 +89,7 @@ namespace ODProxl.ViewModels.Dialogs
 
                 bool allSuccess = true;
 
-                if (SelectedRid == "所有平台 (All Platforms)")
+                if (SelectedRid == "所有平台")
                 {
                     var platforms = AvailableRids.Where(r => r != "所有平台 (All Platforms)").ToList();
                     Console.WriteLine($"[UploadDialog] 開始同時發布到 {platforms.Count} 個平台...");
