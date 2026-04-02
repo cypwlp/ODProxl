@@ -4,6 +4,7 @@ using ODProxl.Utils;
 using Prism.Dialogs;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -36,10 +37,8 @@ namespace ODProxl.Services.impls
                 Console.WriteLine("[Debug 模式] 已跳過 Velopack 更新檢查");
                 return;
             }
-
             if (countryCode == "CN")
             {
-                //await CheckAndUpdateForChinaAsync();
                 await DLLUpdateAsync();
             }
             else
@@ -55,31 +54,22 @@ namespace ODProxl.Services.impls
             {
                 string rid = RuntimeInformation.RuntimeIdentifier;
                 Console.WriteLine($"[Velopack CN] 開始檢查更新，RuntimeIdentifier: {rid}");
-
                 string latestVersion = await GetLatestVersionFromGitHubAsync();
                 if (string.IsNullOrEmpty(latestVersion))
                 {
                     Console.WriteLine("[Velopack CN] 無法取得最新版本號，跳過更新");
                     return;
                 }
-
                 string baseUrl = $"http://interior.topmix.net/info/system/software/ODProxl/{latestVersion}/";
-                Console.WriteLine($"[Velopack CN] baseUrl = {baseUrl}");
-
                 var options = new UpdateOptions { ExplicitChannel = rid };
                 var mgr = new UpdateManager(baseUrl, options);
-
-                Console.WriteLine($"[Velopack CN] 目前安裝版本: {mgr.CurrentVersion}");
-
                 var updateInfo = await mgr.CheckForUpdatesAsync();
                 if (updateInfo == null)
                 {
                     Console.WriteLine($"[Velopack CN] 目前已是最新版本");
                     return;
                 }
-
                 Console.WriteLine($"[Velopack CN] 發現新版本 {updateInfo.TargetFullRelease?.Version}");
-
                 await Dispatcher.UIThread.InvokeAsync(async () =>
                 {
                     var parameters = new DialogParameters { { "UpdateInfo", updateInfo } };
@@ -105,15 +95,12 @@ namespace ODProxl.Services.impls
                 var source = new GithubSource("https://github.com/cypwlp/ODProxl", "", false);
                 var mgr = new UpdateManager(source);
                 var updateInfo = await mgr.CheckForUpdatesAsync();
-
                 if (updateInfo == null)
                 {
                     Console.WriteLine("[Velopack GitHub] 目前已是最新版本");
                     return;
                 }
-
                 Console.WriteLine($"[Velopack GitHub] 發現新版本 {updateInfo.TargetFullRelease?.Version}");
-
                 await Dispatcher.UIThread.InvokeAsync(async () =>
                 {
                     var parameters = new DialogParameters { { "UpdateInfo", updateInfo } };
@@ -137,25 +124,20 @@ namespace ODProxl.Services.impls
             string rid = PlatformHelper.GetCurrentRid();
             string startupPath = AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar);
             string dllUpdateBaseUrl = $"http://interior.topmix.net/info/system/software/ODProxl/DLLUpdater/{rid}/";
-
             try
             {
                 Console.WriteLine($"[DLL Update] 開始檢查 DLL 更新，平台: {rid}，路徑: {dllUpdateBaseUrl}");
-
                 string manifestUrl = $"{dllUpdateBaseUrl}dlls.json";
                 var response = await _httpClient.GetAsync(manifestUrl);
                 response.EnsureSuccessStatusCode();
-
                 string json = await response.Content.ReadAsStringAsync();
                 var manifest = JsonSerializer.Deserialize<DllManifest>(json,
                     new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-
                 if (manifest?.Dlls == null || manifest.Dlls.Count == 0)
                 {
                     Console.WriteLine("[DLL Update] 清單為空，跳過");
                     return;
                 }
-
                 var updateList = new List<DllInfo>();
                 foreach (var dll in manifest.Dlls)
                 {
@@ -163,7 +145,6 @@ namespace ODProxl.Services.impls
                     string? dir = Path.GetDirectoryName(localPath);
                     if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
                         Directory.CreateDirectory(dir);
-
                     bool needsUpdate = true;
                     if (File.Exists(localPath))
                     {
@@ -171,17 +152,14 @@ namespace ODProxl.Services.impls
                         if (localHash.Equals(dll.Hash, StringComparison.OrdinalIgnoreCase))
                             needsUpdate = false;
                     }
-
                     if (needsUpdate)
                         updateList.Add(dll);
                 }
-
                 if (updateList.Count == 0)
                 {
                     Console.WriteLine("[DLL Update] 所有 DLL 均為最新版本");
                     return;
                 }
-
                 bool shouldUpdate = false;
                 await Dispatcher.UIThread.InvokeAsync(async () =>
                 {
@@ -193,33 +171,25 @@ namespace ODProxl.Services.impls
                     var result = await _dialogService.ShowDialogAsync("UpdateDialog", parameters);
                     shouldUpdate = result?.Result == ButtonResult.OK;
                 });
-
                 if (!shouldUpdate) return;
-
                 foreach (var dll in updateList)
                 {
                     string downloadUrl = string.IsNullOrEmpty(dll.Url) ? $"{dllUpdateBaseUrl}{dll.FileName}" : dll.Url;
                     string localPath = Path.Combine(startupPath, dll.FileName);
                     string tempPath = localPath + ".tmp";
-
                     var dllResponse = await _httpClient.GetAsync(downloadUrl);
                     dllResponse.EnsureSuccessStatusCode();
-
                     await using (var fs = new FileStream(tempPath, FileMode.Create))
                     {
                         await dllResponse.Content.CopyToAsync(fs);
                     }
-
-                    // === 修正點 1：使用 string.Equals ===
                     if (!string.Equals(await ComputeFileHashAsync(tempPath), dll.Hash, StringComparison.OrdinalIgnoreCase))
                     {
                         File.Delete(tempPath);
                         continue;
                     }
-
                     if (File.Exists(localPath))
                         try { File.Delete(localPath); } catch { File.Move(localPath, localPath + ".bak", true); }
-
                     File.Move(tempPath, localPath);
                     Console.WriteLine($"[DLL Update] {dll.FileName} 更新完成");
                 }
@@ -239,11 +209,9 @@ namespace ODProxl.Services.impls
                 Console.WriteLine("[DLL Upload] 版本號或目標平台不能為空");
                 return false;
             }
-
             string baseUrl = $"http://interior.topmix.net/info/system/software/ODProxl/DLLUpdater/{targetRid}/";
-
             string manifestUrl = $"{baseUrl}dlls.json";
-            Console.WriteLine($"[DLL Upload] 開始發布版本 {version} → 平台: {targetRid}，路徑: {baseUrl}");
+            Console.WriteLine($"[DLL Upload] 開始發布版本 {version} → 平台: {targetRid}");
 
             DllManifest manifest = await GetOrCreateManifestAsync(manifestUrl);
 
@@ -268,9 +236,102 @@ namespace ODProxl.Services.impls
                 }
             }
 
+            manifest.UpdateDescription = updateDescription ?? string.Empty;
+            manifest.CodeDescription = codeDescription ?? string.Empty;
+
             await UploadManifestAsync(manifestUrl, manifest);
             Console.WriteLine($"[DLL Upload] ✅ 版本 {version} 已成功發布到 {targetRid}！");
             return true;
+        }
+
+        // ==================== Velopack Git 發布（自動取得 Git 路徑）====================
+        public async Task<bool> PublishVelopackVersionAsync(string version, string updateDescription, string codeDescription)
+        {
+            try
+            {
+                string workingDir = await GetGitRepositoryRootAsync();
+                Console.WriteLine($"[Velopack Git] 自動偵測到 Git 倉庫根目錄: {workingDir}");
+
+                await RunGitCommandAsync(workingDir, "add .");
+                await RunGitCommandAsync(workingDir, $"commit --allow-empty -m \"{codeDescription}\"");
+                await RunGitCommandAsync(workingDir, "push");
+                await RunGitCommandAsync(workingDir, $"tag -a {version} -m \"{updateDescription}\"");
+                await RunGitCommandAsync(workingDir, $"push origin {version}");
+
+                Console.WriteLine($"[Velopack Git] ✅ 版本 {version} 已成功推送到 GitHub！");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Velopack Git] ❌ 發布失敗：{ex.Message}");
+                return false;
+            }
+        }
+
+        // ==================== 自動取得 Git 倉庫根目錄 ========================
+        private async Task<string> GetGitRepositoryRootAsync()
+        {
+            try
+            {
+                var psi = new ProcessStartInfo
+                {
+                    FileName = "git",
+                    Arguments = "rev-parse --show-toplevel",
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+
+                using var process = Process.Start(psi) ?? throw new Exception("無法啟動 git 程序");
+                string output = await process.StandardOutput.ReadToEndAsync();
+                string error = await process.StandardError.ReadToEndAsync();
+                await process.WaitForExitAsync();
+
+                if (process.ExitCode != 0)
+                    throw new Exception($"git rev-parse 失敗：{error}");
+
+                string root = output.Trim().Replace('/', '\\'); // Windows 相容
+                if (string.IsNullOrEmpty(root) || !Directory.Exists(root))
+                    throw new Exception("取得的路徑無效");
+
+                return root;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Git Root] 自動偵測失敗：{ex.Message}，使用後備路徑");
+                // 後備機制：從執行目錄往上找
+                string fallback = AppContext.BaseDirectory;
+                for (int i = 0; i < 3; i++)
+                {
+                    fallback = Directory.GetParent(fallback)?.FullName ?? fallback;
+                }
+                return fallback;
+            }
+        }
+
+        private async Task RunGitCommandAsync(string workingDir, string arguments)
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = "git",
+                Arguments = arguments,
+                WorkingDirectory = workingDir,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+
+            using var process = Process.Start(psi) ?? throw new Exception("無法啟動 git 程序");
+            string output = await process.StandardOutput.ReadToEndAsync();
+            string error = await process.StandardError.ReadToEndAsync();
+            await process.WaitForExitAsync();
+
+            if (process.ExitCode != 0)
+                throw new Exception($"git {arguments} 失敗\n錯誤：{error}");
+
+            Console.WriteLine($"[Git] {arguments} 執行成功");
         }
 
         private async Task<DllManifest> GetOrCreateManifestAsync(string manifestUrl)
@@ -294,7 +355,6 @@ namespace ODProxl.Services.impls
             string fileName = Path.GetFileName(localPath);
             string hash = await ComputeFileHashAsync(localPath);
             long size = new FileInfo(localPath).Length;
-
             var dllInfo = new DllInfo
             {
                 FileName = fileName,
@@ -302,10 +362,8 @@ namespace ODProxl.Services.impls
                 Size = size,
                 Url = string.Empty
             };
-
             manifest.Dlls.RemoveAll(d => d.FileName.Equals(fileName, StringComparison.OrdinalIgnoreCase));
             manifest.Dlls.Add(dllInfo);
-
             await UploadFileAsync($"{baseUrl}{fileName}", localPath);
             Console.WriteLine($"[DLL Upload] 已上傳 {fileName}");
         }
@@ -315,7 +373,6 @@ namespace ODProxl.Services.impls
             using var fileStream = File.OpenRead(localFilePath);
             using var content = new StreamContent(fileStream);
             content.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
-
             var response = await _httpClient.PutAsync(url, content);
             response.EnsureSuccessStatusCode();
         }
@@ -328,7 +385,6 @@ namespace ODProxl.Services.impls
             response.EnsureSuccessStatusCode();
         }
 
-        // ==================== 修正點 2：改為非靜態方法 ========================
         private async Task<string> GetLatestVersionFromGitHubAsync()
         {
             try
@@ -339,8 +395,8 @@ namespace ODProxl.Services.impls
                 using var doc = JsonDocument.Parse(json);
                 if (doc.RootElement.TryGetProperty("tag_name", out var tag))
                 {
-                    string version = tag.GetString() ?? "";
-                    return version.StartsWith("v") ? version.Substring(1) : version;
+                    string ver = tag.GetString() ?? "";
+                    return ver.StartsWith("v") ? ver.Substring(1) : ver;
                 }
             }
             catch (Exception ex)

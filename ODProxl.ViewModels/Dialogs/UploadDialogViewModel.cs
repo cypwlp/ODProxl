@@ -1,18 +1,11 @@
 ﻿using ODProxl.Services;
-using Prism.Commands;
-using Prism.Dialogs;
-using Prism.Mvvm;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace ODProxl.ViewModels.Dialogs
 {
     public class UploadDialogViewModel : BindableBase, IDialogAware
     {
         private readonly IUpdateService _updateService;
-        private readonly IDialogService _dialogService;  
+        private readonly IDialogService _dialogService;
 
         public UploadDialogViewModel(IUpdateService updateService, IDialogService dialogService)
         {
@@ -26,7 +19,6 @@ namespace ODProxl.ViewModels.Dialogs
                 "osx-x64", "osx-arm64",
                 "linux-x64", "linux-arm64"
             };
-
             SelectedRid = "所有平台 (All Platforms)";
             Version = "v1.0.1";
 
@@ -38,7 +30,6 @@ namespace ODProxl.ViewModels.Dialogs
         }
 
         public List<string> AvailableRids { get; }
-
         private string _selectedRid = string.Empty;
         public string SelectedRid
         {
@@ -76,70 +67,66 @@ namespace ODProxl.ViewModels.Dialogs
 
         public DelegateCommand ConfirmCommand { get; }
         public DelegateCommand CancelCommand { get; }
-
         public DialogCloseListener RequestClose { get; set; } = default!;
 
         private bool CanExecuteConfirm()
             => !string.IsNullOrWhiteSpace(Version) && !string.IsNullOrWhiteSpace(SelectedRid);
+
+        // ==================== 【核心修改】同時執行 DLL + Velopack 發布 ====================
         private async Task ExecuteConfirmAsync()
         {
             try
             {
-                Console.WriteLine("[UploadDialog] 開始上傳...");
+                Console.WriteLine("[UploadDialog] 開始同時發布 DLL + Velopack...");
 
-                bool allSuccess = true;
+                // 1. Velopack 發布（git commit + tag + push）
+                bool velopackSuccess = await _updateService.PublishVelopackVersionAsync(
+                    Version, UpdateDescription, CodeDescription);
 
-                if (SelectedRid == "所有平台")
+                // 2. DLL 發布（可多平台）
+                bool dllAllSuccess = true;
+
+                if (SelectedRid == "所有平台 (All Platforms)")
                 {
                     var platforms = AvailableRids.Where(r => r != "所有平台 (All Platforms)").ToList();
-                    Console.WriteLine($"[UploadDialog] 開始同時發布到 {platforms.Count} 個平台...");
+                    Console.WriteLine($"[UploadDialog] 同時發布到 {platforms.Count} 個 DLL 平台...");
 
                     foreach (var rid in platforms)
                     {
                         Console.WriteLine($"[UploadDialog] → 上傳平台: {rid}");
                         bool success = await _updateService.PublishNewDllVersionAsync(
                             Version, DllFiles, UpdateDescription, CodeDescription, rid);
-
                         if (!success)
                         {
                             Console.WriteLine($"[UploadDialog] ❌ {rid} 上傳失敗！");
-                            allSuccess = false;
+                            dllAllSuccess = false;
                         }
                     }
-
-                    if (allSuccess)
-                        Console.WriteLine($"[UploadDialog] ✅ 所有平台發布完成！");
-                    else
-                        Console.WriteLine($"[UploadDialog] ⚠️ 部分平台發布失敗，請查看上方詳細錯誤！");
                 }
                 else
                 {
                     bool success = await _updateService.PublishNewDllVersionAsync(
                         Version, DllFiles, UpdateDescription, CodeDescription, SelectedRid);
-
-                    if (success)
-                        Console.WriteLine($"[UploadDialog] ✅ 版本 {Version} 已成功發布到 {SelectedRid}！");
-                    else
-                        Console.WriteLine($"[UploadDialog] ❌ {SelectedRid} 上傳失敗，請查看上方錯誤詳情！");
+                    if (!success) dllAllSuccess = false;
                 }
 
-                // 直接關閉對話框，不再彈成功/失敗視窗
+                // 最終結果
+                if (velopackSuccess && dllAllSuccess)
+                    Console.WriteLine($"[UploadDialog] 🎉 全部發布成功！版本 {Version}");
+                else if (velopackSuccess)
+                    Console.WriteLine($"[UploadDialog] ⚠️ Velopack 成功，但部分 DLL 發布失敗");
+                else if (dllAllSuccess)
+                    Console.WriteLine($"[UploadDialog] ⚠️ DLL 成功，但 Velopack Git 發布失敗");
+                else
+                    Console.WriteLine($"[UploadDialog] ❌ 兩種發布均失敗");
+
                 RequestClose.Invoke(new DialogResult(ButtonResult.OK));
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"[UploadDialog] 嚴重錯誤：{ex.Message}");
-                RequestClose.Invoke(new DialogResult(ButtonResult.OK));  // 還是讓對話框能關閉
+                RequestClose.Invoke(new DialogResult(ButtonResult.OK));
             }
-        }
-        private async Task ShowMessageAsync(string title, string message, ButtonResult defaultResult)
-        {
-            var parameters = new DialogParameters
-            {
-                { "Title", title },
-                { "Message", message }
-            };
-            //await _dialogService.ShowDialogAsync("UpdateDialog", parameters);
         }
 
         private void ExecuteCancel()
@@ -151,4 +138,4 @@ namespace ODProxl.ViewModels.Dialogs
         public void OnDialogClosed() { }
         public void OnDialogOpened(IDialogParameters parameters) { }
     }
-}  
+}

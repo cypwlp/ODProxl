@@ -6,9 +6,11 @@ using System.Threading.Tasks;
 
 namespace ODProxl.EntityModels
 {
-   public class DllManifest
+    public class DllManifest
     {
         public string Version { get; set; } = string.Empty;
+        public string UpdateDescription { get; set; } = string.Empty;
+        public string CodeDescription { get; set; } = string.Empty;
         public List<DllInfo> Dlls { get; set; } = new();
     }
 }
