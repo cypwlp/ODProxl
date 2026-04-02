@@ -11,7 +11,7 @@ jobs:
     name: Publish for ${{ matrix.rid }}
     runs-on: ${{ matrix.os }}
     strategy:
-      fail-fast: false                    # ← 新增：避免一個平台失敗就取消全部
+      fail-fast: false
       matrix:
         include:
           - os: windows-latest
@@ -26,10 +26,8 @@ jobs:
           - os: ubuntu-22.04
             rid: linux-x64
             executable: ODProxl
-
     permissions:
       contents: write
-
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -82,6 +80,7 @@ jobs:
         run: dotnet publish -c Release --runtime ${{ matrix.rid }} --self-contained true -o ./publish
 
       - name: Publish Updater (ODProxl.Updater)
+        shell: bash
         run: |
           dotnet publish ODProxl.Updater/ODProxl.Updater.csproj \
             -c Release \
@@ -98,11 +97,12 @@ jobs:
 
       - name: Sync Previous Releases (Delta Updates)
         continue-on-error: true
+        shell: bash
         run: |
           vpk download github \
             --repoUrl https://github.com/${{ github.repository }} \
             --outputDir ./Releases \
-            --token ${{ secrets.GITHUB_TOKEN }}          # ← 新增 token 解決 rate limit
+            --token ${{ secrets.GITHUB_TOKEN }}
 
       - name: Velopack Pack
         shell: bash
@@ -146,14 +146,12 @@ jobs:
           path: ./Releases
           if-no-files-found: error
 
-  # ====================== 新增：統一建立 GitHub Release ======================
   create-github-release:
     name: Create GitHub Release
     needs: publish
     runs-on: ubuntu-latest
     permissions:
       contents: write
-
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
@@ -172,7 +170,7 @@ jobs:
           ls -la ./merged_releases
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2        # ← 更新為 v2
+        uses: softprops/action-gh-release@v2
         with:
           files: |
             ./merged_releases/*.exe
@@ -187,7 +185,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # ====================== 原有國內同步 job（完全不變） ======================
   sync-to-china:
     name: Sync to China Server (WebDAV)
     needs: publish
@@ -213,6 +210,7 @@ jobs:
         run: curl -fsSL https://rclone.org/install.sh | sudo bash
 
       - name: Sync to WebDAV（每個版本建立獨立資料夾）
+        shell: bash
         run: |
           mkdir -p ~/.config/rclone
           cat > ~/.config/rclone/rclone.conf <<EOF
@@ -225,6 +223,7 @@ jobs:
           buffer_size = 64M
           chunk_size = 32M
           EOF
+
           VERSION="${GITHUB_REF_NAME#v}"
           echo "正在上傳版本 $VERSION 到獨立資料夾"
           rclone copy ./merged_releases webdav:/${VERSION}/ \
