@@ -20,8 +20,8 @@ namespace ODProxl.ViewModels.Dialogs
                 "linux-x64", "linux-arm64"
             };
             SelectedRid = "所有平台 (All Platforms)";
-            Version = 1.0.ToString();
-            LoadLatestVersionAsync().ConfigureAwait(false);
+            Version = "v1.0.1";
+            //LoadLatestVersionAsync().ConfigureAwait(false);
             ConfirmCommand = new DelegateCommand(async () => await ExecuteConfirmAsync(), CanExecuteConfirm)
                 .ObservesProperty(() => Version)
                 .ObservesProperty(() => SelectedRid);
